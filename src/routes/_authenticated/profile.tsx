@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { Panel } from "@/components/common/Panel";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { TopBar } from "@/components/layout/TopBar";
@@ -18,6 +19,15 @@ export const Route = createFileRoute("/_authenticated/profile")({
 
 function ProfilePage() {
   const { user, signOut } = useAuth();
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await signOut();
+    await navigate({ to: "/login", replace: true });
+  };
   return (
     <>
       <TopBar title="Profile" subtitle="Current session" />
@@ -39,7 +49,7 @@ function ProfilePage() {
               {user ? formatRelative(user.lastActiveAt) : "—"}
             </dd>
           </dl>
-          <Button variant="outline" className="h-8 text-xs" onClick={signOut}>
+          <Button variant="outline" className="h-8 text-xs" onClick={() => void handleSignOut()}>
             Sign out
           </Button>
         </Panel>

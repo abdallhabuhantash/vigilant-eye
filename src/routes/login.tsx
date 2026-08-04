@@ -1,10 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { ScanEye, ShieldCheck } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
+import { createFirstAdministrator, needsBootstrap } from "@/lib/bootstrap-admin.functions";
 
 export const Route = createFileRoute("/login")({
   ssr: false,
@@ -29,10 +32,20 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const navigate = useNavigate();
   const { signIn, isAuthenticated } = useAuth();
-  const [email, setEmail] = useState("admin@campus.local");
-  const [password, setPassword] = useState("demo1234");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [fullName, setFullName] = useState("");
+
+  const checkBootstrap = useServerFn(needsBootstrap);
+  const bootstrapAdmin = useServerFn(createFirstAdministrator);
+  const bootstrap = useQuery({
+    queryKey: ["needs-bootstrap"],
+    queryFn: () => checkBootstrap(),
+    retry: false,
+  });
+  const setupMode = bootstrap.data?.needsBootstrap === true;
 
   useEffect(() => {
     if (isAuthenticated) void navigate({ to: "/dashboard", replace: true });
@@ -43,6 +56,10 @@ function LoginPage() {
     setPending(true);
     setError(null);
     try {
+      if (setupMode) {
+        await bootstrapAdmin({ data: { email, password, fullName } });
+        await bootstrap.refetch();
+      }
       await signIn(email, password);
       await navigate({ to: "/dashboard", replace: true });
     } catch (caught) {
@@ -66,6 +83,20 @@ function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="panel space-y-4 p-4">
+          {setupMode && (
+            <div className="space-y-1.5">
+              <Label htmlFor="fullName" className="label-tech">
+                Full name
+              </Label>
+              <Input
+                id="fullName"
+                required
+                value={fullName}
+                onChange={(event) => setFullName(event.target.value)}
+                className="font-mono text-sm"
+              />
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="email" className="label-tech">
               Email
@@ -102,14 +133,19 @@ function LoginPage() {
           )}
 
           <Button type="submit" disabled={pending} className="w-full">
-            {pending ? "Authenticating…" : "Sign in"}
+            {pending
+              ? "Authenticating…"
+              : setupMode
+                ? "Create administrator account"
+                : "Sign in"}
           </Button>
 
           <div className="flex items-start gap-2 border-t border-border/70 pt-3 text-[11px] text-muted-foreground">
             <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-primary" />
             <p>
-              Prototype accounts — administrator: admin@campus.local, operator:
-              operator@campus.local. Password: demo1234.
+              {setupMode
+                ? "No accounts exist yet. This one-time form creates the first administrator; afterwards only administrators can add accounts."
+                : "Accounts are created by an administrator. There is no public registration for this monitoring console."}
             </p>
           </div>
         </form>

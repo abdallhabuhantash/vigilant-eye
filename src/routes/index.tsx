@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { authService } from "@/services/auth-service";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -17,10 +17,13 @@ export const Route = createFileRoute("/")({
         content:
           "Command-center console for multi-camera AI monitoring and suspicious cheating activity detection.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  beforeLoad: () => {
-    throw redirect({ to: authService.getSession() ? "/dashboard" : "/login" });
+  beforeLoad: async () => {
+    const { data } = await supabase.auth.getSession();
+    throw redirect({ to: data.session ? "/dashboard" : "/login" });
   },
   component: () => null,
 });

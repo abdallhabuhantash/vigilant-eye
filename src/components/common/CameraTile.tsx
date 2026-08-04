@@ -1,9 +1,10 @@
 import { Cpu, Disc, VideoOff } from "lucide-react";
 import { StatusDot } from "./StatusDot";
+import { LiveStreamPlayer } from "./LiveStreamPlayer";
 import { cn } from "@/lib/utils";
 import type { Camera } from "@/types";
 
-export function CameraTile({ camera }: { camera: Camera }) {
+export function CameraTile({ camera, live = false }: { camera: Camera; live?: boolean }) {
   const offline = camera.status === "offline";
 
   return (
@@ -15,7 +16,9 @@ export function CameraTile({ camera }: { camera: Camera }) {
       )}
     >
       <div className="hud-grid relative flex aspect-video items-center justify-center bg-[oklch(0.14_0.02_255)]">
-        {offline ? (
+        {live ? (
+          <LiveStreamPlayer cameraId={camera.id} offline={offline} />
+        ) : offline ? (
           <div className="flex flex-col items-center gap-1 text-destructive/80">
             <VideoOff className="size-6" />
             <span className="font-mono text-[10px] uppercase tracking-[0.2em]">No signal</span>
