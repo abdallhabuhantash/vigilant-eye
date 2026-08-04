@@ -1,5 +1,5 @@
-import { Camera as CameraIcon, Cpu, Expand, Grid2X2, Maximize2, ScanLine, VideoOff } from "lucide-react";
-import { useRef, useState } from "react";
+import { Camera as CameraIcon, Cpu, Grid2X2, Maximize2, ScanLine, VideoOff } from "lucide-react";
+import { useRef } from "react";
 import examHallSurveillance from "@/assets/exam-hall-surveillance.jpg";
 import { LiveStreamPlayer } from "@/components/common/LiveStreamPlayer";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ export function MainMonitoringViewport({ camera, detections, event, live, overla
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 animate-surveillance-scan" style={{ background: "var(--scan-line)" }} />
       <span className="pointer-events-none absolute left-3 top-3 z-20 size-9 border-l-2 border-t-2 border-primary/70" /><span className="pointer-events-none absolute right-3 top-3 z-20 size-9 border-r-2 border-t-2 border-primary/70" /><span className="pointer-events-none absolute bottom-3 left-3 z-20 size-9 border-b-2 border-l-2 border-primary/70" /><span className="pointer-events-none absolute bottom-3 right-3 z-20 size-9 border-b-2 border-r-2 border-primary/70" />
       <DetectionOverlayLayer detections={detections} visible={overlays && camera.status !== "offline"} />
-      <LiveAlertOverlay event={event} camera={camera} />
+      <LiveAlertOverlay {...(event ? { event } : {})} camera={camera} />
       <div className="absolute left-5 top-5 z-40 flex items-center gap-2 border border-primary/40 bg-background/82 px-2 py-1.5 backdrop-blur-sm"><span className="size-1.5 animate-pulse-dot rounded-full bg-primary" /><span className="font-mono text-[9px] text-primary">AI ANALYSIS ACTIVE</span><span className="border-l border-border pl-2 font-mono text-[9px] text-foreground">{detections.length} DETECTIONS</span></div>
       <div className="absolute right-5 top-5 z-40 flex gap-1"><Button variant="outline" size="icon" className="size-8 bg-background/80" onClick={onToggleOverlays} aria-label="Toggle AI overlays"><ScanLine className={cn("size-3.5", overlays && "text-primary")} /></Button><Button variant="outline" size="icon" className="size-8 bg-background/80" onClick={capture} aria-label="Save snapshot"><CameraIcon className="size-3.5" /></Button><Button variant="outline" size="icon" className="size-8 bg-background/80" onClick={fullscreen} aria-label="Open full screen"><Maximize2 className="size-3.5" /></Button></div>
       <div className="absolute bottom-5 left-5 z-40 border border-border bg-background/82 px-3 py-1.5 backdrop-blur-sm"><div className="flex items-center gap-2 font-mono text-[9px]"><span className="text-primary">CH{String(camera.channel).padStart(2, "0")}</span><span className="text-foreground">{camera.name}</span><span className="text-muted-foreground">{camera.location}</span><span className="text-destructive">● LIVE</span></div></div>
@@ -32,7 +32,7 @@ export function MainMonitoringViewport({ camera, detections, event, live, overla
 }
 
 export function CameraHealthStrip({ camera, event }: { camera: Camera; event?: DetectionEvent }) {
-  return <div className="grid h-10 shrink-0 grid-cols-3 border border-t-0 border-border bg-surface sm:grid-cols-6"><Health label="Camera" value={camera.status} tone={camera.status === "online" ? "ok" : "warn"} /><Health label="AI rule" value="Mobile Phone" tone="ok" /><Health label="People" value="3 tracked" /><Health label="Phones" value="2 detected" tone="warn" /><Health label="Recording" value={camera.recording ? "Active" : "Stopped"} tone={camera.recording ? "ok" : "warn"} /><Health label="Last alert" value={event ? "Just now" : "—"} tone={event ? "critical" : undefined} /></div>;
+  return <div className="grid h-10 shrink-0 grid-cols-3 border border-t-0 border-border bg-surface sm:grid-cols-6"><Health label="Camera" value={camera.status} tone={camera.status === "online" ? "ok" : "warn"} /><Health label="AI rule" value="Mobile Phone" tone="ok" /><Health label="People" value="3 tracked" /><Health label="Phones" value="2 detected" tone="warn" /><Health label="Recording" value={camera.recording ? "Active" : "Stopped"} tone={camera.recording ? "ok" : "warn"} /><Health label="Last alert" value={event ? "Just now" : "—"} {...(event ? { tone: "critical" as const } : {})} /></div>;
 }
 
 function Health({ label, value, tone }: { label: string; value: string; tone?: "ok" | "warn" | "critical" }) { return <div className="min-w-0 border-r border-border/70 px-2 py-1"><p className="truncate font-mono text-[7px] uppercase text-muted-foreground">{label}</p><p className={cn("truncate font-mono text-[9px] uppercase text-foreground", tone === "ok" && "text-success", tone === "warn" && "text-warning", tone === "critical" && "text-destructive")}>{value}</p></div>; }

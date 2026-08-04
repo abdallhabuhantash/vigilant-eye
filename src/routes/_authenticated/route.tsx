@@ -1,4 +1,4 @@
-import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
+import { Outlet, createFileRoute, redirect, useRouterState } from "@tanstack/react-router";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -13,9 +13,10 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function AuthenticatedLayout() {
+  const monitoring = useRouterState({ select: (state) => state.location.pathname === "/monitoring" });
   return (
     <div className="flex min-h-screen w-full bg-background">
-      <AppSidebar />
+      {!monitoring && <AppSidebar />}
       <div className="flex min-w-0 flex-1 flex-col">
         <Outlet />
       </div>
