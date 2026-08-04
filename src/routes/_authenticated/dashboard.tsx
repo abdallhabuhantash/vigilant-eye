@@ -135,7 +135,10 @@ function DashboardPage() {
           <div className="space-y-3">
             <Panel title="AI service" bodyClassName="space-y-2 p-3">
               <div className="flex items-center gap-2">
-                <StatusDot tone={ai.data?.online ? "online" : "offline"} pulse={ai.data?.online} />
+                <StatusDot
+                  tone={ai.data?.online ? "online" : "offline"}
+                  pulse={ai.data?.online === true}
+                />
                 <span className="text-xs text-foreground">
                   {ai.data?.online ? "Connected" : "Disconnected"}
                 </span>
