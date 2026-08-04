@@ -17,7 +17,10 @@ export const Route = createFileRoute("/api/stream/$cameraId")({
           .maybeSingle();
 
         const base = (settings?.ai_service_url ?? "").replace(/\/$/, "");
-        if (!base) return new Response("AI service is not configured", { status: 503 });
+        // The Python AI service is optional (not running in preview/demo).
+        // Return 4xx instead of 5xx so it is treated as "no stream yet",
+        // not as an application error.
+        if (!base) return new Response("AI service is not configured", { status: 404 });
 
         const headers: Record<string, string> = {};
         const serviceKey = process.env["AI_SERVICE_KEY"];
@@ -26,7 +29,7 @@ export const Route = createFileRoute("/api/stream/$cameraId")({
         try {
           const upstream = await fetch(`${base}/stream/${params.cameraId}`, { headers });
           if (!upstream.ok || !upstream.body) {
-            return new Response("Stream unavailable", { status: 502 });
+            return new Response("Stream unavailable", { status: 404 });
           }
           return new Response(upstream.body, {
             status: 200,
@@ -38,7 +41,7 @@ export const Route = createFileRoute("/api/stream/$cameraId")({
             },
           });
         } catch {
-          return new Response("Stream unreachable", { status: 502 });
+          return new Response("Stream unreachable", { status: 404 });
         }
       },
     },
