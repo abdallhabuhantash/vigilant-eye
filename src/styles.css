@@ -121,6 +121,7 @@
   --hud-grid:
     linear-gradient(to right, oklch(0.9 0.02 220 / 3.5%) 1px, transparent 1px),
     linear-gradient(to bottom, oklch(0.9 0.02 220 / 3.5%) 1px, transparent 1px);
+  --scan-line: linear-gradient(to bottom, transparent, oklch(0.78 0.13 195 / 13%), transparent);
 
   --font-sans:
     "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
@@ -190,6 +191,37 @@
   }
 }
 
+@keyframes surveillance-scan {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(900%); }
+}
+
+@keyframes alert-in {
+  from { opacity: 0; transform: translate(-50%, -10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@keyframes alert-frame {
+  0%, 100% { box-shadow: inset 0 0 0 1px transparent; }
+  50% { box-shadow: inset 0 0 18px color-mix(in oklab, var(--destructive) 35%, transparent); }
+}
+
 @utility animate-pulse-dot {
   animation: pulse-dot 1.8s ease-in-out infinite;
+}
+
+@utility animate-surveillance-scan {
+  animation: surveillance-scan 7s linear infinite;
+}
+
+@utility animate-alert-in {
+  animation: alert-in 0.35s ease-out both;
+}
+
+@utility animate-alert-frame {
+  animation: alert-frame 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-surveillance-scan, .animate-alert-in, .animate-alert-frame, .animate-pulse-dot { animation: none; }
 }
