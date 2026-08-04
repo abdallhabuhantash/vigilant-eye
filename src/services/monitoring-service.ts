@@ -18,7 +18,9 @@ import type {
   SystemSettings,
 } from "@/types";
 
-type Row = Record<string, unknown>;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Rows come back from the Data API untyped for these hand-written mappers.
+type Row = any;
 
 const fail = (error: { message: string } | null): void => {
   if (error) throw new Error(error.message);
@@ -196,7 +198,7 @@ export const rulesService = {
     if (patch.soundNotification !== undefined)
       payload.sound_notification = patch.soundNotification;
     if (Object.keys(payload).length === 0) return;
-    const { error } = await supabase.from("ai_rules").update(payload).eq("id", id);
+    const { error } = await supabase.from("ai_rules").update(payload as never).eq("id", id);
     fail(error);
   },
 };
@@ -242,7 +244,7 @@ export const systemService = {
       .select("*")
       .eq("service", "ai")
       .maybeSingle();
-    const payload = ((data?.payload ?? {}) as Record<string, unknown>) || {};
+    const payload: Row = data?.payload ?? {};
     return {
       online: Boolean(data?.online),
       version: (payload.version as string) ?? "—",
@@ -261,7 +263,7 @@ export const systemService = {
       .select("*")
       .eq("service", "nvr")
       .maybeSingle();
-    const payload = ((data?.payload ?? {}) as Record<string, unknown>) || {};
+    const payload: Row = data?.payload ?? {};
     return {
       online: Boolean(data?.online),
       model: (payload.model as string) ?? "—",
@@ -294,7 +296,7 @@ export const systemService = {
     if (patch.autoAcknowledgeMinutes !== undefined)
       payload.auto_acknowledge_minutes = patch.autoAcknowledgeMinutes;
     if (patch.timezone !== undefined) payload.timezone = patch.timezone;
-    const { error } = await supabase.from("system_settings").upsert(payload);
+    const { error } = await supabase.from("system_settings").upsert(payload as never);
     fail(error);
   },
 };
