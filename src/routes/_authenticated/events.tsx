@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { useEvents, useEventsSummary, useReviewEvent } from "@/hooks/use-monitoring";
+import { useRealtimeEvents } from "@/hooks/use-realtime-events";
 import { formatTimestamp } from "@/lib/format";
 import type { EventSeverity, EventStatus } from "@/types";
 
@@ -44,6 +45,7 @@ function EventsPage() {
   const summary = useEventsSummary();
   const review = useReviewEvent();
   const { user } = useAuth();
+  useRealtimeEvents();
   const [query, setQuery] = useState("");
   const [severity, setSeverity] = useState<EventSeverity | "all">("all");
   const [status, setStatus] = useState<EventStatus | "all">("all");
