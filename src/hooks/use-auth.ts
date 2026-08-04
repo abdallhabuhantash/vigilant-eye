@@ -1,21 +1,42 @@
-import { useSyncExternalStore } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 import { authService } from "@/services/auth-service";
-import type { AuthSession, UserRole } from "@/types";
-
-const emptySnapshot = (): AuthSession | null => null;
+import { usersService } from "@/services/monitoring-service";
+import type { AppUser, UserRole } from "@/types";
 
 export function useAuth() {
-  const session = useSyncExternalStore(
-    authService.subscribe,
-    authService.getSession,
-    emptySnapshot,
-  );
+  const [session, setSession] = useState<Session | null>(null);
+  const [ready, setReady] = useState(false);
 
-  const role: UserRole | null = session?.user.role ?? null;
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+      setSession(next);
+      setReady(true);
+    });
+    void supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session ?? null);
+      setReady(true);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  const userId = session?.user.id ?? null;
+
+  const profile = useQuery<AppUser | null>({
+    queryKey: ["profile", userId],
+    queryFn: () => usersService.byId(userId as string),
+    enabled: Boolean(userId),
+  });
+
+  const user = profile.data ?? null;
+  const role: UserRole | null = user?.role ?? null;
 
   return {
+    ready,
     session,
-    user: session?.user ?? null,
+    user,
     role,
     isAdministrator: role === "administrator",
     isAuthenticated: session !== null,
