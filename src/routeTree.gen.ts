@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as AuthenticatedAiRulesRouteImport } from './routes/_authenticated/ai-rules'
 import { Route as AuthenticatedCamerasRouteImport } from './routes/_authenticated/cameras'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEventsRouteImport } from './routes/_authenticated/events'
@@ -30,6 +31,11 @@ const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAiRulesRoute = AuthenticatedAiRulesRouteImport.update({
+  id: '/ai-rules',
+  path: '/ai-rules',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedCamerasRoute = AuthenticatedCamerasRouteImport.update({
   id: '/cameras',
@@ -55,6 +61,7 @@ const AuthenticatedMonitoringRoute = AuthenticatedMonitoringRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/ai-rules': typeof AuthenticatedAiRulesRoute
   '/cameras': typeof AuthenticatedCamerasRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/events': typeof AuthenticatedEventsRoute
@@ -63,6 +70,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/ai-rules': typeof AuthenticatedAiRulesRoute
   '/cameras': typeof AuthenticatedCamerasRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/events': typeof AuthenticatedEventsRoute
@@ -73,6 +81,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/login': typeof LoginRoute
+  '/_authenticated/ai-rules': typeof AuthenticatedAiRulesRoute
   '/_authenticated/cameras': typeof AuthenticatedCamerasRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/events': typeof AuthenticatedEventsRoute
@@ -81,14 +90,28 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/login' | '/cameras' | '/dashboard' | '/events' | '/monitoring'
+    | '/'
+    | '/login'
+    | '/ai-rules'
+    | '/cameras'
+    | '/dashboard'
+    | '/events'
+    | '/monitoring'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/cameras' | '/dashboard' | '/events' | '/monitoring'
+  to:
+    | '/'
+    | '/login'
+    | '/ai-rules'
+    | '/cameras'
+    | '/dashboard'
+    | '/events'
+    | '/monitoring'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/login'
+    | '/_authenticated/ai-rules'
     | '/_authenticated/cameras'
     | '/_authenticated/dashboard'
     | '/_authenticated/events'
@@ -124,6 +147,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/ai-rules': {
+      id: '/_authenticated/ai-rules'
+      path: '/ai-rules'
+      fullPath: '/ai-rules'
+      preLoaderRoute: typeof AuthenticatedAiRulesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/cameras': {
       id: '/_authenticated/cameras'
       path: '/cameras'
@@ -156,6 +186,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAiRulesRoute: typeof AuthenticatedAiRulesRoute
   AuthenticatedCamerasRoute: typeof AuthenticatedCamerasRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEventsRoute: typeof AuthenticatedEventsRoute
@@ -163,6 +194,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAiRulesRoute: AuthenticatedAiRulesRoute,
   AuthenticatedCamerasRoute: AuthenticatedCamerasRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEventsRoute: AuthenticatedEventsRoute,

@@ -54,7 +54,7 @@ function AiRulesPage() {
                 )
               }
               bodyClassName="space-y-4 p-3"
-              className={rule.available ? undefined : "opacity-60"}
+              className={rule.available ? "" : "opacity-60"}
             >
               <div className="flex items-center gap-2">
                 <SeverityBadge severity={rule.severity} />
