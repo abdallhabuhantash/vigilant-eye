@@ -29,8 +29,8 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const navigate = useNavigate();
   const { signIn, isAuthenticated } = useAuth();
-  const [email, setEmail] = useState("admin@campus.local");
-  const [password, setPassword] = useState("demo1234");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -108,8 +108,8 @@ function LoginPage() {
           <div className="flex items-start gap-2 border-t border-border/70 pt-3 text-[11px] text-muted-foreground">
             <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-primary" />
             <p>
-              Prototype accounts — administrator: admin@campus.local, operator:
-              operator@campus.local. Password: demo1234.
+              Accounts are created by an administrator. There is no public registration for this
+              monitoring console.
             </p>
           </div>
         </form>
