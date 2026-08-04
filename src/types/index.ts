@@ -50,6 +50,22 @@ export interface DetectionEvent {
   note: string | null;
 }
 
+export type DetectionAlertState = "normal" | "evaluating" | "alert" | "uncertain";
+
+export interface DetectionOverlay {
+  objectId: string;
+  trackingId: string | null;
+  className: "person" | "cell_phone";
+  confidence: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  associatedPersonId: string | null;
+  associationConfidence: number | null;
+  alertState: DetectionAlertState;
+}
+
 export interface AiRule {
   id: string;
   name: string;
