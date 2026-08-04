@@ -7,6 +7,7 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button } from "@/components/ui/button";
 import { useCameraSummary, useCameras, useRecentEvents } from "@/hooks/use-monitoring";
+import { useRealtimeEvents } from "@/hooks/use-realtime-events";
 import { formatRelative } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +37,7 @@ function MonitoringPage() {
   const cameras = useCameras();
   const fleet = useCameraSummary();
   const alerts = useRecentEvents(8);
+  useRealtimeEvents({ notify: true });
   const [layout, setLayout] = useState<LayoutOption>(2);
   const [aiOnly, setAiOnly] = useState(false);
   const visible = (cameras.data ?? []).filter((camera) => !aiOnly || camera.aiEnabled);
@@ -76,7 +78,7 @@ function MonitoringPage() {
           >
             <div className={cn("grid gap-3", layoutClass[layout])}>
               {visible.map((camera) => (
-                <CameraTile key={camera.id} camera={camera} />
+                <CameraTile key={camera.id} camera={camera} live />
               ))}
             </div>
             {visible.length === 0 && (
