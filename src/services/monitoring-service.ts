@@ -173,7 +173,7 @@ export const eventsService = {
       _event_id: id,
       _status: status,
       _note: note ?? null,
-    } as never);
+    });
     fail(error);
   },
   snapshotUrl: async (path: string | null): Promise<string | null> => {
@@ -201,7 +201,7 @@ export const rulesService = {
     );
   },
   update: async (id: string, patch: Partial<AiRule>): Promise<void> => {
-    const payload: Row = {};
+    const payload: TablesUpdate<"ai_rules"> = {};
     if (patch.enabled !== undefined) payload.enabled = patch.enabled;
     if (patch.confidenceThreshold !== undefined)
       payload.confidence_threshold = patch.confidenceThreshold;
@@ -213,12 +213,12 @@ export const rulesService = {
     if (patch.soundNotification !== undefined)
       payload.sound_notification = patch.soundNotification;
     if (Object.keys(payload).length === 0) return;
-    const { error } = await supabase.from("ai_rules").update(payload as never).eq("id", id);
+    const { error } = await supabase.from("ai_rules").update(payload).eq("id", id);
     fail(error);
   },
 };
 
-const toUser = (row: Row, role: string | undefined): AppUser => ({
+const toUser = (row: ProfileRow, role: string | undefined): AppUser => ({
   id: row.id as string,
   fullName: (row.full_name as string) || (row.email as string),
   email: row.email as string,
@@ -255,7 +255,7 @@ export const usersService = {
 export const systemService = {
   operationMode: async (): Promise<OperationMode> => {
     const { data } = await supabase.from("system_settings").select("*").maybeSingle();
-    return ((data as Row)?.operation_mode as OperationMode) ?? "demo";
+    return (data?.operation_mode as OperationMode) ?? "demo";
   },
   aiStatus: async (mode: OperationMode): Promise<AiServiceStatus> => {
     const { data } = await supabase
@@ -263,11 +263,11 @@ export const systemService = {
       .select("*")
       .eq("service", "ai")
       .maybeSingle();
-    const row: Row = data;
+    const row: ServiceHealthRow | null = data;
     const isDemo = Boolean(row?.is_demo);
     // In live mode a demo placeholder is not a connected service.
     const usable = row && (mode === "demo" || !isDemo);
-    const payload: Row = usable ? (row.payload ?? {}) : {};
+    const payload = usable ? jsonRecord(row.payload) : {};
     const lastPingAt = (row?.updated_at as string) ?? null;
     const stale = usable ? !isFresh(lastPingAt, AI_HEARTBEAT_STALE_MS) : true;
     return {
@@ -292,10 +292,10 @@ export const systemService = {
       .select("*")
       .eq("service", "nvr")
       .maybeSingle();
-    const row: Row = data;
+    const row: ServiceHealthRow | null = data;
     const isDemo = Boolean(row?.is_demo);
     const usable = row && (mode === "demo" || !isDemo);
-    const payload: Row = usable ? (row.payload ?? {}) : {};
+    const payload = usable ? jsonRecord(row.payload) : {};
     const lastSyncAt = (row?.updated_at as string) ?? null;
     const stale = usable ? !isFresh(lastSyncAt, NVR_HEARTBEAT_STALE_MS) : true;
     return {
@@ -314,7 +314,7 @@ export const systemService = {
   settings: async (): Promise<SystemSettings> => {
     const { data } = await supabase.from("system_settings").select("*").maybeSingle();
     return {
-      operationMode: ((data as Row)?.operation_mode as OperationMode) ?? "demo",
+      operationMode: (data?.operation_mode as OperationMode) ?? "demo",
       aiServiceUrl: (data?.ai_service_url as string) ?? "",
       websocketUrl: (data?.websocket_url as string) ?? "",
       retentionDays: Number(data?.retention_days ?? 30),
@@ -325,7 +325,10 @@ export const systemService = {
     };
   },
   updateSettings: async (patch: Partial<SystemSettings>): Promise<void> => {
-    const payload: Row = { id: true, updated_at: new Date().toISOString() };
+    const payload: TablesInsert<"system_settings"> = {
+      id: true,
+      updated_at: new Date().toISOString(),
+    };
     if (patch.operationMode !== undefined) payload.operation_mode = patch.operationMode;
     if (patch.aiServiceUrl !== undefined) payload.ai_service_url = patch.aiServiceUrl;
     if (patch.websocketUrl !== undefined) payload.websocket_url = patch.websocketUrl;
@@ -335,7 +338,7 @@ export const systemService = {
     if (patch.autoAcknowledgeMinutes !== undefined)
       payload.auto_acknowledge_minutes = patch.autoAcknowledgeMinutes;
     if (patch.timezone !== undefined) payload.timezone = patch.timezone;
-    const { error } = await supabase.from("system_settings").upsert(payload as never);
+    const { error } = await supabase.from("system_settings").upsert(payload);
     fail(error);
   },
 };
