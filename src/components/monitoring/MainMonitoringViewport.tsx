@@ -38,7 +38,9 @@ export function MainMonitoringViewport({
       ref={frameRef}
       className={cn(
         "relative min-h-0 flex-1 overflow-hidden border border-primary/35 bg-background",
-        event?.severity === "critical" && "animate-alert-frame border-destructive/70",
+        event &&
+          displaySeverity(event) === "critical" &&
+          "animate-alert-frame border-destructive/70",
       )}
     >
       <div className="absolute inset-0">
