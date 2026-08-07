@@ -20,6 +20,7 @@ import {
   useNvrStatus,
   useRecentEvents,
 } from "@/hooks/use-monitoring";
+import { displaySeverity } from "@/lib/event-presentation";
 import { formatRelative } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -113,7 +114,7 @@ function DashboardPage() {
                 <li key={event.id} className="flex items-center gap-3 px-3 py-2.5">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <SeverityBadge severity={event.severity} />
+                      <SeverityBadge severity={displaySeverity(event)} />
                       <span className="truncate text-[13px] text-foreground">
                         {eventTypeLabel(event.type)}
                       </span>
