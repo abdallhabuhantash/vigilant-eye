@@ -444,8 +444,13 @@ export const systemService = {
     const payload = usable ? jsonRecord(row.payload) : {};
     const lastSyncAt = (row?.updated_at as string) ?? null;
     const stale = usable ? !isFresh(lastSyncAt, NVR_HEARTBEAT_STALE_MS) : true;
+    // Recording is only claimed when the heartbeat explicitly reports it.
+    const reportedRecording = payload["recording_active"];
+    const recordingActive =
+      usable && !stale && typeof reportedRecording === "boolean" ? reportedRecording : null;
     return {
       online: Boolean(usable && row.online) && !stale,
+      recordingActive,
       model: (payload["model"] as string) ?? "—",
       channelsUsed: Number(payload["channels_used"] ?? 0),
       channelsTotal: Number(payload["channels_total"] ?? 0),
