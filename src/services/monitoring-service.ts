@@ -136,17 +136,20 @@ const toRule = (row: RuleRow, cameraIds: string[]): AiRule => ({
 });
 
 export const camerasService = {
-  list: async (): Promise<Camera[]> => {
+  list: async (mode?: OperationMode): Promise<Camera[]> => {
     const { data, error } = await supabase.from("cameras").select("*").order("channel");
     fail(error);
-    return (data ?? []).map(toCamera);
+    const cameras = (data ?? []).map(toCamera);
+    if (mode === "live") return cameras.filter((camera) => !camera.isDemo);
+    if (mode === "demo") return cameras.filter((camera) => camera.isDemo);
+    return cameras;
   },
   get: async (id: string): Promise<Camera | undefined> => {
     const { data } = await supabase.from("cameras").select("*").eq("id", id).maybeSingle();
     return data ? toCamera(data) : undefined;
   },
-  summary: async (): Promise<CameraFleetSummary> => {
-    const cameras = await camerasService.list();
+  summary: async (mode?: OperationMode): Promise<CameraFleetSummary> => {
+    const cameras = await camerasService.list(mode);
     return {
       total: cameras.length,
       online: cameras.filter((c) => c.status === "online").length,
@@ -185,26 +188,22 @@ export const camerasService = {
 };
 
 export const eventsService = {
-  list: async (): Promise<DetectionEvent[]> => {
-    const { data, error } = await supabase
-      .from("events")
-      .select("*")
-      .order("detected_at", { ascending: false })
-      .limit(300);
+  list: async (mode?: OperationMode): Promise<DetectionEvent[]> => {
+    let query = supabase.from("events").select("*");
+    if (mode) query = query.eq("source_mode", mode);
+    const { data, error } = await query.order("detected_at", { ascending: false }).limit(300);
     fail(error);
     return (data ?? []).map(toEvent);
   },
-  recent: async (limit: number): Promise<DetectionEvent[]> => {
-    const { data, error } = await supabase
-      .from("events")
-      .select("*")
-      .order("detected_at", { ascending: false })
-      .limit(limit);
+  recent: async (limit: number, mode?: OperationMode): Promise<DetectionEvent[]> => {
+    let query = supabase.from("events").select("*");
+    if (mode) query = query.eq("source_mode", mode);
+    const { data, error } = await query.order("detected_at", { ascending: false }).limit(limit);
     fail(error);
     return (data ?? []).map(toEvent);
   },
-  summary: async (): Promise<EventsSummary> => {
-    const events = await eventsService.list();
+  summary: async (mode?: OperationMode): Promise<EventsSummary> => {
+    const events = await eventsService.list(mode);
     return {
       today: events.length,
       critical: events.filter((e) => e.severity === "critical").length,
