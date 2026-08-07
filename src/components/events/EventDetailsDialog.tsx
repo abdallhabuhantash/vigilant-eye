@@ -1,5 +1,10 @@
 import { useMemo, useState } from "react";
-import { AssociationBadge, ConfidenceMeter, SeverityBadge, StatusBadge } from "@/components/common/EventBadges";
+import {
+  AssociationBadge,
+  ConfidenceMeter,
+  SeverityBadge,
+  StatusBadge,
+} from "@/components/common/EventBadges";
 import { DetectionOverlayLayer } from "@/components/monitoring/DetectionOverlayLayer";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,7 +50,9 @@ function SnapshotEvidence({ event, showOverlay }: { event: DetectionEvent; showO
   if (!event.snapshotPath) {
     return (
       <div className="flex aspect-video items-center justify-center rounded-[4px] border border-dashed border-border bg-background/60">
-        <p className="text-[11px] text-muted-foreground">No snapshot was captured for this event.</p>
+        <p className="text-[11px] text-muted-foreground">
+          No snapshot was captured for this event.
+        </p>
       </div>
     );
   }

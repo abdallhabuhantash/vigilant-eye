@@ -200,11 +200,9 @@ export const useUpdateCamera = () =>
     camerasService.update(input.id, input.config),
   );
 
-export const useArchiveCamera = () =>
-  useCameraMutation((id: string) => camerasService.archive(id));
+export const useArchiveCamera = () => useCameraMutation((id: string) => camerasService.archive(id));
 
-export const useRestoreCamera = () =>
-  useCameraMutation((id: string) => camerasService.restore(id));
+export const useRestoreCamera = () => useCameraMutation((id: string) => camerasService.restore(id));
 
 /**
  * Temporary signed URL for a private snapshot. Nothing is persisted; the URL
