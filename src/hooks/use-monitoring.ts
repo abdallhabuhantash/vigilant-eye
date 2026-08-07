@@ -126,7 +126,7 @@ export const useReportSummary = (range: "7d" | "30d") => {
 export function useReviewEvent() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { id: string; status: EventStatus; note?: string }) =>
+    mutationFn: (input: { id: string; status: EventStatus; note?: string | undefined }) =>
       eventsService.review(input.id, input.status, input.note),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["events"] });
