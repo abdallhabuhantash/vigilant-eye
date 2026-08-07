@@ -56,7 +56,9 @@ export function displayPersonId(event: DetectionEvent): string | null {
 
 export function formatSeconds(value: number | null): string {
   if (value === null) return "—";
-  return `${Number(value).toFixed(2).replace(/\.?0+$/, "")} s`;
+  return `${Number(value)
+    .toFixed(2)
+    .replace(/\.?0+$/, "")} s`;
 }
 
 export function formatPercent(value: number | null): string {

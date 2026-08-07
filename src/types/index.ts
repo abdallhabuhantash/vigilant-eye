@@ -39,9 +39,7 @@ export type EventStatus = "new" | "under_review" | "confirmed" | "rejected";
  * gracefully for unknown future types (smoking_detected, camera_offline, …).
  */
 export type KnownEventType =
-  | "suspicious_cheating_activity"
-  | "possible_cheating_activity"
-  | "mobile_phone_detected";
+  "suspicious_cheating_activity" | "possible_cheating_activity" | "mobile_phone_detected";
 
 /** Extensible: any string is valid, known values keep autocomplete. */
 export type EventType = KnownEventType | (string & {});

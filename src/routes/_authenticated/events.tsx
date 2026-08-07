@@ -74,7 +74,11 @@ function EventsPage() {
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           <StatTile label="Total events" value={summary.data?.today ?? 0} />
           <StatTile label="Critical" value={summary.data?.critical ?? 0} tone="critical" />
-          <StatTile label="Pending review" value={summary.data?.pendingReview ?? 0} tone="warning" />
+          <StatTile
+            label="Pending review"
+            value={summary.data?.pendingReview ?? 0}
+            tone="warning"
+          />
           <StatTile label="Confirmed" value={summary.data?.confirmed ?? 0} tone="success" />
           <StatTile label="Rejected" value={summary.data?.rejected ?? 0} />
         </div>

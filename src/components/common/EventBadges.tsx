@@ -39,10 +39,7 @@ export function ConfidenceMeter({ value }: { value: number }) {
   return (
     <div className="flex items-center gap-2">
       <div className="h-1 w-16 overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full bg-primary"
-          style={{ width: `${percent}%` }}
-        />
+        <div className="h-full bg-primary" style={{ width: `${percent}%` }} />
       </div>
       <span className="font-mono text-xs tabular-nums text-muted-foreground">{percent}%</span>
     </div>

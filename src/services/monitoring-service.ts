@@ -265,7 +265,8 @@ export const rulesService = {
       payload.person_confidence_threshold = patch.personConfidenceThreshold;
     if (patch.associationConfidenceThreshold !== undefined)
       payload.association_confidence_threshold = patch.associationConfidenceThreshold;
-    if (patch.minMatchingFrames !== undefined) payload.min_matching_frames = patch.minMatchingFrames;
+    if (patch.minMatchingFrames !== undefined)
+      payload.min_matching_frames = patch.minMatchingFrames;
     if (patch.requirePersonAssociation !== undefined)
       payload.require_person_association = patch.requirePersonAssociation;
     if (Object.keys(payload).length === 0) return;
