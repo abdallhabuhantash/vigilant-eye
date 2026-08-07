@@ -5,6 +5,8 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { AI_HEARTBEAT_STALE_MS, NVR_HEARTBEAT_STALE_MS, isFresh } from "@/lib/health";
+import { effectiveSeverity } from "@/lib/event-presentation";
+import { addDays, startOfZonedDay, zonedDayKey, zonedWeekdayLabel } from "@/lib/time-zone";
 import type { Json, Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import type {
   AiRule,
@@ -100,6 +102,7 @@ const toEvent = (row: EventRow): DetectionEvent => ({
   snapshotUrl: (row.snapshot_path as string) ?? null,
   detectedAt: row.detected_at as string,
   reviewedBy: (row.reviewed_by as string) ?? null,
+  reviewedAt: (row.reviewed_at as string) ?? null,
   note: (row.note as string) ?? null,
   personTrackingId: row.person_tracking_id ?? null,
   triggerObjectClass: row.trigger_object_class ?? null,
