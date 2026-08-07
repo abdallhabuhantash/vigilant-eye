@@ -1,4 +1,3 @@
-import { useAuth } from "@/hooks/use-auth";
 import { Link } from "@tanstack/react-router";
 import {
   Activity,

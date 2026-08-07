@@ -26,8 +26,8 @@ function MonitoringPage() {
   const camerasQuery = useCameras(); const fleet = useCameraSummary(); const eventsSummary = useEventsSummary();
   const eventsQuery = useRecentEvents(20); const ai = useAiServiceStatus(); const nvr = useNvrStatus(); const rules = useAiRules();
   useRealtimeEvents({ notify: true });
-  const mode = useOperationMode();
-  const isDemoMode = (mode.data ?? "demo") === "demo";
+  const opMode = useOperationMode();
+  const isDemoMode = (opMode.data ?? "demo") === "demo";
   // Demo cameras, overlays and sample events exist only in demo mode.
   const cameras = useMemo(
     () => (isDemoMode ? mergeDemoCameras(camerasQuery.data ?? []) : (camerasQuery.data ?? []).filter((camera) => !camera.isDemo)),
