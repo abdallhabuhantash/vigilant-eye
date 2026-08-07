@@ -4,7 +4,12 @@
  * by the external Python AI service using its service credentials.
  */
 import { supabase } from "@/integrations/supabase/client";
-import { AI_HEARTBEAT_STALE_MS, NVR_HEARTBEAT_STALE_MS, isFresh } from "@/lib/health";
+import {
+  AI_HEARTBEAT_STALE_MS,
+  NVR_HEARTBEAT_STALE_MS,
+  effectiveCameraStatus,
+  isFresh,
+} from "@/lib/health";
 import { effectiveSeverity } from "@/lib/event-presentation";
 import { addDays, startOfZonedDay, zonedShortDateLabel, zonedWeekdayLabel } from "@/lib/time-zone";
 import type { Json, Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
@@ -14,6 +19,7 @@ import type {
   AppUser,
   AssociationStatus,
   Camera,
+  CameraConfigInput,
   CameraFleetSummary,
   DetectionEvent,
   DetectionEvidence,
@@ -80,6 +86,11 @@ const toCamera = (row: CameraRow): Camera => ({
   location: row.location as string,
   host: row.host as string,
   channel: row.channel as number,
+  sourceType: (row.source_type as Camera["sourceType"]) ?? "direct_camera",
+  rtspPort: Number(row.rtsp_port ?? 554),
+  streamPath: (row.stream_path as string) ?? "",
+  streamProfile: (row.stream_profile as Camera["streamProfile"]) ?? "main",
+  active: row.active !== false,
   status: row.status as Camera["status"],
   aiEnabled: row.ai_enabled as boolean,
   recording: row.recording as boolean,
@@ -87,6 +98,7 @@ const toCamera = (row: CameraRow): Camera => ({
   fps: row.fps as number,
   isDemo: row.is_demo as boolean,
   lastHeartbeatAt: row.last_heartbeat_at as string,
+  updatedAt: (row.updated_at as string) ?? (row.created_at as string),
 });
 
 const toEvent = (row: EventRow): DetectionEvent => ({
@@ -99,7 +111,7 @@ const toEvent = (row: EventRow): DetectionEvent => ({
   ruleId: (row.rule_id as string) ?? "",
   confidence: Number(row.confidence ?? 0),
   durationSeconds: row.duration_seconds as number,
-  snapshotUrl: (row.snapshot_path as string) ?? null,
+  snapshotPath: (row.snapshot_path as string) ?? null,
   detectedAt: row.detected_at as string,
   reviewedBy: (row.reviewed_by as string) ?? null,
   reviewedAt: (row.reviewed_at as string) ?? null,
@@ -138,11 +150,30 @@ const toRule = (row: RuleRow, cameraIds: string[]): AiRule => ({
   requirePersonAssociation: Boolean(row.require_person_association),
 });
 
+/** Which archive state a camera listing should include. */
+export type CameraScope = "active" | "archived" | "all";
+
+const toCameraRowPatch = (input: CameraConfigInput): TablesUpdate<"cameras"> => ({
+  name: input.name,
+  location: input.location,
+  source_type: input.sourceType,
+  host: input.host,
+  rtsp_port: input.rtspPort,
+  channel: input.channel,
+  stream_path: input.streamPath,
+  stream_profile: input.streamProfile,
+  resolution: input.resolution,
+  fps: input.fps,
+  ai_enabled: input.aiEnabled,
+});
+
 export const camerasService = {
-  list: async (mode?: OperationMode): Promise<Camera[]> => {
+  list: async (mode?: OperationMode, scope: CameraScope = "active"): Promise<Camera[]> => {
     const { data, error } = await supabase.from("cameras").select("*").order("channel");
     fail(error);
-    const cameras = (data ?? []).map(toCamera);
+    let cameras = (data ?? []).map(toCamera);
+    if (scope === "active") cameras = cameras.filter((camera) => camera.active);
+    if (scope === "archived") cameras = cameras.filter((camera) => !camera.active);
     if (mode === "live") return cameras.filter((camera) => !camera.isDemo);
     if (mode === "demo") return cameras.filter((camera) => camera.isDemo);
     return cameras;
@@ -151,41 +182,62 @@ export const camerasService = {
     const { data } = await supabase.from("cameras").select("*").eq("id", id).maybeSingle();
     return data ? toCamera(data) : undefined;
   },
+  /**
+   * Fleet counters use the same heartbeat-aware status as the table rows, so a
+   * stale camera can never be counted as online. Archived cameras are excluded.
+   */
   summary: async (mode?: OperationMode): Promise<CameraFleetSummary> => {
-    const cameras = await camerasService.list(mode);
+    const cameras = await camerasService.list(mode, "active");
+    const statuses = cameras.map(effectiveCameraStatus);
     return {
       total: cameras.length,
-      online: cameras.filter((c) => c.status === "online").length,
-      offline: cameras.filter((c) => c.status === "offline").length,
-      degraded: cameras.filter((c) => c.status === "degraded").length,
+      online: statuses.filter((status) => status === "online").length,
+      offline: statuses.filter((status) => status === "offline").length,
+      degraded: statuses.filter((status) => status === "degraded").length,
       aiEnabled: cameras.filter((c) => c.aiEnabled).length,
-      recording: cameras.filter((c) => c.recording).length,
+      // Reported runtime state only — a stale camera is never counted recording.
+      recording: cameras.filter((c, index) => c.recording && statuses[index] !== "offline").length,
     };
   },
   toggleAi: async (id: string, enabled: boolean): Promise<void> => {
     const { error } = await supabase.from("cameras").update({ ai_enabled: enabled }).eq("id", id);
     fail(error);
   },
-  create: async (input: {
-    name: string;
-    location: string;
-    host: string;
-    channel: number;
-    resolution: string;
-    isDemo: boolean;
-  }): Promise<void> => {
-    const { error } = await supabase.from("cameras").insert({
+  /**
+   * Creates configuration only. Runtime health (status, heartbeat, recording)
+   * stays at its defaults until the AI service reports it.
+   */
+  create: async (input: CameraConfigInput): Promise<void> => {
+    const payload: TablesInsert<"cameras"> = {
+      ...toCameraRowPatch(input),
       name: input.name,
-      location: input.location,
-      host: input.host,
-      channel: input.channel,
-      resolution: input.resolution,
-      is_demo: input.isDemo,
-    });
+      is_demo: input.sourceType === "demo",
+      active: true,
+      status: "offline",
+    };
+    const { error } = await supabase.from("cameras").insert(payload);
     fail(error);
   },
-  remove: async (id: string): Promise<void> => {
-    const { error } = await supabase.from("cameras").delete().eq("id", id);
+  update: async (id: string, input: CameraConfigInput): Promise<void> => {
+    const { error } = await supabase.from("cameras").update(toCameraRowPatch(input)).eq("id", id);
+    fail(error);
+  },
+  /**
+   * Archive instead of delete: historical events keep referencing the camera.
+   * Rule assignments are dropped so the future AI service ignores it.
+   */
+  archive: async (id: string): Promise<void> => {
+    const { error } = await supabase
+      .from("cameras")
+      .update({ active: false, ai_enabled: false })
+      .eq("id", id);
+    fail(error);
+    const unlink = await supabase.from("ai_rule_cameras").delete().eq("camera_id", id);
+    fail(unlink.error);
+  },
+  /** Restores configuration only — rules must be reassigned explicitly. */
+  restore: async (id: string): Promise<void> => {
+    const { error } = await supabase.from("cameras").update({ active: true }).eq("id", id);
     fail(error);
   },
 };
@@ -252,7 +304,8 @@ export const eventsService = {
     });
     fail(error);
   },
-  snapshotUrl: async (path: string | null): Promise<string | null> => {
+  /** Temporary signed URL for a private snapshot. Never persisted anywhere. */
+  createSnapshotSignedUrl: async (path: string | null): Promise<string | null> => {
     if (!path) return null;
     const { data } = await supabase.storage.from("snapshots").createSignedUrl(path, 300);
     return data?.signedUrl ?? null;
@@ -391,8 +444,13 @@ export const systemService = {
     const payload = usable ? jsonRecord(row.payload) : {};
     const lastSyncAt = (row?.updated_at as string) ?? null;
     const stale = usable ? !isFresh(lastSyncAt, NVR_HEARTBEAT_STALE_MS) : true;
+    // Recording is only claimed when the heartbeat explicitly reports it.
+    const reportedRecording = payload["recording_active"];
+    const recordingActive =
+      usable && !stale && typeof reportedRecording === "boolean" ? reportedRecording : null;
     return {
       online: Boolean(usable && row.online) && !stale,
+      recordingActive,
       model: (payload["model"] as string) ?? "—",
       channelsUsed: Number(payload["channels_used"] ?? 0),
       channelsTotal: Number(payload["channels_total"] ?? 0),

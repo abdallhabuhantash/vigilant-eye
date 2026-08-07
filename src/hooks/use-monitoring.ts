@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  type CameraScope,
   camerasService,
   eventsService,
   reportsService,
@@ -7,7 +8,13 @@ import {
   systemService,
   usersService,
 } from "@/services/monitoring-service";
-import type { AiRule, EventStatus, OperationMode, SystemSettings } from "@/types";
+import type {
+  AiRule,
+  CameraConfigInput,
+  EventStatus,
+  OperationMode,
+  SystemSettings,
+} from "@/types";
 
 const LIVE_REFRESH_MS = 15_000;
 const HEARTBEAT_REFRESH_MS = 10_000;
@@ -29,11 +36,11 @@ const useScopedMode = () => {
   return { mode: mode.data ?? "demo", ready: mode.data !== undefined } as const;
 };
 
-export const useCameras = () => {
+export const useCameras = (scope: CameraScope = "active") => {
   const { mode, ready } = useScopedMode();
   return useQuery({
-    queryKey: ["cameras", mode],
-    queryFn: () => camerasService.list(mode),
+    queryKey: ["cameras", mode, scope],
+    queryFn: () => camerasService.list(mode, scope),
     enabled: ready,
     refetchInterval: HEARTBEAT_REFRESH_MS,
   });
@@ -119,7 +126,7 @@ export const useReportSummary = (range: "7d" | "30d") => {
 export function useReviewEvent() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { id: string; status: EventStatus; note?: string }) =>
+    mutationFn: (input: { id: string; status: EventStatus; note?: string | undefined }) =>
       eventsService.review(input.id, input.status, input.note),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["events"] });
@@ -172,3 +179,41 @@ export function useUpdateSettings() {
     },
   });
 }
+
+/** Camera configuration mutations. RLS restricts these to administrators. */
+function useCameraMutation<TInput>(fn: (input: TInput) => Promise<void>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["cameras"] });
+      void queryClient.invalidateQueries({ queryKey: ["ai-rules"] });
+    },
+  });
+}
+
+export const useCreateCamera = () =>
+  useCameraMutation((input: CameraConfigInput) => camerasService.create(input));
+
+export const useUpdateCamera = () =>
+  useCameraMutation((input: { id: string; config: CameraConfigInput }) =>
+    camerasService.update(input.id, input.config),
+  );
+
+export const useArchiveCamera = () => useCameraMutation((id: string) => camerasService.archive(id));
+
+export const useRestoreCamera = () => useCameraMutation((id: string) => camerasService.restore(id));
+
+/**
+ * Temporary signed URL for a private snapshot. Nothing is persisted; the URL
+ * is refetched before the five-minute signature expires.
+ */
+export const useEventSnapshot = (snapshotPath: string | null, enabled = true) =>
+  useQuery({
+    queryKey: ["snapshot", snapshotPath],
+    queryFn: () => eventsService.createSnapshotSignedUrl(snapshotPath),
+    enabled: enabled && Boolean(snapshotPath),
+    staleTime: 240_000,
+    refetchInterval: 240_000,
+    retry: 1,
+  });
