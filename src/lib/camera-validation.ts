@@ -54,7 +54,15 @@ export const cameraConfigSchema = z.object({
   aiEnabled: z.boolean(),
 });
 
-export type CameraFormValues = z.input<typeof cameraConfigSchema>;
+export type CameraFormValues = Omit<
+  z.input<typeof cameraConfigSchema>,
+  "rtspPort" | "channel" | "fps"
+> & {
+  /** Kept as raw input so partially typed numbers do not reset the field. */
+  rtspPort: number | string;
+  channel: number | string;
+  fps: number | string;
+};
 
 export function validateCameraConfig(
   values: CameraFormValues,
