@@ -78,3 +78,26 @@ Every event written by the real service MUST set `source_mode = 'live'`.
 Only prototype/demonstration rows use `source_mode = 'demo'`; the UI queries
 events strictly by the active operation mode, so a mislabelled row is invisible
 in the other mode.
+
+## NVR / service heartbeat: recording state
+
+The console never claims recording is happening unless the heartbeat says so.
+
+`service_health.payload` for the `nvr` service may include:
+
+```json
+{ "model": "Generic NVR", "recording_active": true }
+```
+
+- `recording_active: true` → the UI shows `REC` and `NVR: Recording`.
+- `recording_active: false` → `NVR: Online`, and `No REC`.
+- field omitted, or heartbeat stale/never reported → recording state is unknown;
+  the UI shows `No REC` and never displays a recording indicator.
+
+## Camera configuration fields
+
+Cameras are configured in the console (`source_type`, `host`, `rtsp_port`,
+`channel`, `stream_path`, `stream_profile`, `active`). Credentials are NOT
+stored in these fields — the AI service resolves the username/password from its
+own local configuration or from `camera_credentials` using the service role.
+Archived cameras (`active = false`) must be ignored by the AI service.
