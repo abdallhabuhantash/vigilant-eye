@@ -84,3 +84,14 @@ const weekdayFormatter = new Intl.DateTimeFormat("en-US", {
 export function zonedWeekdayLabel(date: Date): string {
   return weekdayFormatter.format(date);
 }
+
+const shortDateFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: APP_TIMEZONE,
+  month: "short",
+  day: "numeric",
+});
+
+/** Short "Aug 7" style label in the application timezone. */
+export function zonedShortDateLabel(date: Date): string {
+  return shortDateFormatter.format(date);
+}
