@@ -115,6 +115,18 @@ export function useToggleCameraFlag() {
   });
 }
 
+/** Assigns which cameras a detection rule applies to. */
+export function useSetRuleCameras() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { ruleId: string; cameraIds: string[] }) =>
+      rulesService.setCameras(input.ruleId, input.cameraIds),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["ai-rules"] });
+    },
+  });
+}
+
 export function useUpdateSettings() {
   const queryClient = useQueryClient();
   return useMutation({

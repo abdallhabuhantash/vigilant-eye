@@ -5,6 +5,7 @@ import {
   ConfidenceMeter,
   SeverityBadge,
   StatusBadge,
+  AssociationBadge,
   eventTypeLabel,
 } from "@/components/common/EventBadges";
 import { Panel } from "@/components/common/Panel";
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { useEvents, useEventsSummary, useReviewEvent } from "@/hooks/use-monitoring";
 import { useRealtimeEvents } from "@/hooks/use-realtime-events";
+import { displayPersonId, formatSeconds } from "@/lib/event-presentation";
 import { formatTimestamp } from "@/lib/format";
 import type { EventSeverity, EventStatus } from "@/types";
 
@@ -52,7 +54,7 @@ function EventsPage() {
       (events.data ?? []).filter((event) => {
         const matchesQuery =
           query.trim() === "" ||
-          `${event.cameraName} ${eventTypeLabel[event.type]} ${event.id}`
+          `${event.cameraName} ${eventTypeLabel(event.type)} ${event.id}`
             .toLowerCase()
             .includes(query.toLowerCase());
         const matchesSeverity = severity === "all" || event.severity === severity;
@@ -72,7 +74,11 @@ function EventsPage() {
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           <StatTile label="Total events" value={summary.data?.today ?? 0} />
           <StatTile label="Critical" value={summary.data?.critical ?? 0} tone="critical" />
-          <StatTile label="Pending review" value={summary.data?.pendingReview ?? 0} tone="warning" />
+          <StatTile
+            label="Pending review"
+            value={summary.data?.pendingReview ?? 0}
+            tone="warning"
+          />
           <StatTile label="Confirmed" value={summary.data?.confirmed ?? 0} tone="success" />
           <StatTile label="Rejected" value={summary.data?.rejected ?? 0} />
         </div>
@@ -127,7 +133,9 @@ function EventsPage() {
                 <th className="label-tech px-3 py-2">Detected</th>
                 <th className="label-tech px-3 py-2">Event</th>
                 <th className="label-tech px-3 py-2">Camera</th>
-                <th className="label-tech px-3 py-2">Confidence</th>
+                <th className="label-tech px-3 py-2">Track</th>
+                <th className="label-tech px-3 py-2">Trigger conf.</th>
+                <th className="label-tech px-3 py-2">Association</th>
                 <th className="label-tech px-3 py-2">Duration</th>
                 <th className="label-tech px-3 py-2">Severity</th>
                 <th className="label-tech px-3 py-2">Status</th>
@@ -143,13 +151,19 @@ function EventsPage() {
                   <td className="px-3 py-2 font-mono text-[11px] tabular-nums text-muted-foreground">
                     {formatTimestamp(event.detectedAt)}
                   </td>
-                  <td className="px-3 py-2 text-foreground">{eventTypeLabel[event.type]}</td>
+                  <td className="px-3 py-2 text-foreground">{eventTypeLabel(event.type)}</td>
                   <td className="px-3 py-2 text-muted-foreground">{event.cameraName}</td>
+                  <td className="px-3 py-2 font-mono text-[11px] text-muted-foreground">
+                    {displayPersonId(event) ?? "—"}
+                  </td>
                   <td className="px-3 py-2">
-                    <ConfidenceMeter value={event.confidence} />
+                    <ConfidenceMeter value={event.triggerConfidence ?? event.confidence} />
+                  </td>
+                  <td className="px-3 py-2">
+                    <AssociationBadge status={event.associationStatus} />
                   </td>
                   <td className="px-3 py-2 font-mono text-[11px] tabular-nums">
-                    {event.durationSeconds}s
+                    {formatSeconds(event.detectionDurationSeconds)}
                   </td>
                   <td className="px-3 py-2">
                     <SeverityBadge severity={event.severity} />

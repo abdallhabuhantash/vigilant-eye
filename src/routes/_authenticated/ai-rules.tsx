@@ -7,7 +7,8 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { TopBar } from "@/components/layout/TopBar";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { useAiRules, useCameras, useUpdateRule } from "@/hooks/use-monitoring";
+import { useAiRules, useCameras, useSetRuleCameras, useUpdateRule } from "@/hooks/use-monitoring";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/ai-rules")({
   beforeLoad: requireAdministrator,
@@ -28,6 +29,7 @@ function AiRulesPage() {
   const rules = useAiRules();
   const cameras = useCameras();
   const update = useUpdateRule();
+  const setCameras = useSetRuleCameras();
   return (
     <>
       <TopBar
@@ -66,7 +68,7 @@ function AiRulesPage() {
                 </span>
               </div>
               <RuleSlider
-                label="Confidence threshold"
+                label="Trigger object confidence"
                 value={Math.round(rule.confidenceThreshold * 100)}
                 suffix="%"
                 min={40}
@@ -77,14 +79,51 @@ function AiRulesPage() {
                 }
               />
               <RuleSlider
-                label="Minimum duration"
-                value={rule.minDurationSeconds}
-                suffix="s"
-                min={1}
-                max={30}
+                label="Person confidence"
+                value={Math.round(rule.personConfidenceThreshold * 100)}
+                suffix="%"
+                min={40}
+                max={99}
                 disabled={!rule.available}
                 onCommit={(value) =>
-                  update.mutate({ id: rule.id, patch: { minDurationSeconds: value } })
+                  update.mutate({ id: rule.id, patch: { personConfidenceThreshold: value / 100 } })
+                }
+              />
+              <RuleSlider
+                label="Association confidence"
+                value={Math.round(rule.associationConfidenceThreshold * 100)}
+                suffix="%"
+                min={40}
+                max={99}
+                disabled={!rule.available}
+                onCommit={(value) =>
+                  update.mutate({
+                    id: rule.id,
+                    patch: { associationConfidenceThreshold: value / 100 },
+                  })
+                }
+              />
+              <RuleSlider
+                label="Minimum duration"
+                value={Math.round(rule.minDurationSeconds * 10)}
+                display={`${rule.minDurationSeconds.toFixed(1)}`}
+                suffix="s"
+                min={5}
+                max={300}
+                disabled={!rule.available}
+                onCommit={(value) =>
+                  update.mutate({ id: rule.id, patch: { minDurationSeconds: value / 10 } })
+                }
+              />
+              <RuleSlider
+                label="Minimum matching frames"
+                value={rule.minMatchingFrames}
+                suffix=""
+                min={1}
+                max={120}
+                disabled={!rule.available}
+                onCommit={(value) =>
+                  update.mutate({ id: rule.id, patch: { minMatchingFrames: value } })
                 }
               />
               <RuleSlider
@@ -116,6 +155,45 @@ function AiRulesPage() {
                     update.mutate({ id: rule.id, patch: { soundNotification: value } })
                   }
                 />
+                <ToggleRow
+                  label="Require person association"
+                  checked={rule.requirePersonAssociation}
+                  disabled={!rule.available}
+                  onChange={(value) =>
+                    update.mutate({ id: rule.id, patch: { requirePersonAssociation: value } })
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <span className="label-tech text-muted-foreground">Assigned cameras</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {(cameras.data ?? []).map((camera) => {
+                    const active = rule.cameraIds.includes(camera.id);
+                    return (
+                      <button
+                        key={camera.id}
+                        type="button"
+                        disabled={!rule.available || setCameras.isPending}
+                        onClick={() =>
+                          setCameras.mutate({
+                            ruleId: rule.id,
+                            cameraIds: active
+                              ? rule.cameraIds.filter((id) => id !== camera.id)
+                              : [...rule.cameraIds, camera.id],
+                          })
+                        }
+                        className={cn(
+                          "rounded-[3px] border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] transition-colors",
+                          active
+                            ? "border-primary/60 bg-primary/10 text-primary"
+                            : "border-border/70 bg-surface-2/50 text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        CH{String(camera.channel).padStart(2, "0")} · {camera.name}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </Panel>
           ))}
@@ -128,6 +206,7 @@ function AiRulesPage() {
 function RuleSlider({
   label,
   value,
+  display,
   suffix,
   min,
   max,
@@ -137,6 +216,7 @@ function RuleSlider({
 }: {
   label: string;
   value: number;
+  display?: string;
   suffix: string;
   min: number;
   max: number;
@@ -149,7 +229,7 @@ function RuleSlider({
       <div className="flex items-center justify-between">
         <span className="label-tech text-muted-foreground">{label}</span>
         <span className="font-mono text-[12px] tabular-nums text-primary">
-          {value}
+          {display ?? value}
           {suffix}
         </span>
       </div>

@@ -32,10 +32,43 @@ export interface Camera {
 
 export type EventSeverity = "critical" | "warning" | "info";
 export type EventStatus = "new" | "under_review" | "confirmed" | "rejected";
-export type EventType =
-  | "suspicious_cheating_activity"
-  | "possible_cheating_activity"
-  | "mobile_phone_detected";
+
+/**
+ * Event types the current build knows how to present richly. The platform is
+ * generic: the database accepts any identifier, so the UI must degrade
+ * gracefully for unknown future types (smoking_detected, camera_offline, …).
+ */
+export type KnownEventType =
+  "suspicious_cheating_activity" | "possible_cheating_activity" | "mobile_phone_detected";
+
+/** Extensible: any string is valid, known values keep autocomplete. */
+export type EventType = KnownEventType | (string & {});
+
+/** What the AI knows about the phone/person relationship (never a review state). */
+export type AssociationStatus = "associated" | "uncertain" | "unassociated" | "not_applicable";
+
+/** Whether the record came from real hardware or seeded demonstration data. */
+export type EventSourceMode = "live" | "demo";
+
+/** Normalized (0–1) box relative to the frame, never pixel coordinates. */
+export interface DetectionBoundingBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** One structured detection captured as evidence at event time. */
+export interface DetectionEvidence {
+  objectId: string;
+  trackingId: string | null;
+  className: string;
+  confidence: number;
+  bbox: DetectionBoundingBox;
+  role: string;
+  associatedPersonTrackingId: string | null;
+  associationConfidence: number | null;
+}
 
 export interface DetectionEvent {
   id: string;
@@ -50,8 +83,23 @@ export interface DetectionEvent {
   snapshotUrl: string | null;
   detectedAt: string;
   reviewedBy: string | null;
+  /** Human reviewer note only — never a transport for AI evidence. */
   note: string | null;
+  /** Temporary AI tracking identifier, not a real-world identity. */
+  personTrackingId: string | null;
+  triggerObjectClass: string | null;
+  triggerConfidence: number | null;
+  associationStatus: AssociationStatus;
+  associationConfidence: number | null;
+  /** Fractional seconds (e.g. 1.75). */
+  detectionDurationSeconds: number | null;
+  detectionFrameCount: number | null;
+  evidence: DetectionEvidence[];
+  sourceMode: EventSourceMode;
 }
+
+/** Canonical alias for the structured AI event contract. */
+export type AIEvent = DetectionEvent;
 
 export type DetectionAlertState = "normal" | "evaluating" | "alert" | "uncertain";
 
@@ -82,6 +130,12 @@ export interface AiRule {
   cameraIds: string[];
   saveSnapshot: boolean;
   soundNotification: boolean;
+  /** Minimum person-detection confidence before association is attempted. */
+  personConfidenceThreshold: number;
+  /** Minimum person↔trigger-object association confidence. */
+  associationConfidenceThreshold: number;
+  minMatchingFrames: number;
+  requirePersonAssociation: boolean;
 }
 
 export interface AiServiceStatus {
