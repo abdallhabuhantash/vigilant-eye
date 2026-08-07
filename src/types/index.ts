@@ -1,5 +1,8 @@
 export type UserRole = "administrator" | "operator";
 
+/** Explicit application operating mode. Demo data is only ever used in "demo". */
+export type OperationMode = "demo" | "live";
+
 export interface AppUser {
   id: string;
   fullName: string;
@@ -91,6 +94,12 @@ export interface AiServiceStatus {
   gpuLoadPercent: number;
   uptimeSeconds: number;
   lastPingAt: string;
+  /** Heartbeat older than the freshness threshold. */
+  stale: boolean;
+  /** Record is a demonstration placeholder, not real hardware. */
+  isDemo: boolean;
+  /** No health record has ever been reported by a real service. */
+  neverReported: boolean;
 }
 
 export interface NvrStatus {
@@ -101,6 +110,9 @@ export interface NvrStatus {
   storageUsedPercent: number;
   retentionDays: number;
   lastSyncAt: string;
+  stale: boolean;
+  isDemo: boolean;
+  neverReported: boolean;
 }
 
 export interface CameraFleetSummary {
@@ -135,6 +147,7 @@ export interface ReportSummary {
 }
 
 export interface SystemSettings {
+  operationMode: OperationMode;
   aiServiceUrl: string;
   websocketUrl: string;
   retentionDays: number;

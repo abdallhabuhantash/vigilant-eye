@@ -10,7 +10,7 @@ import { useReportSummary } from "@/hooks/use-monitoring";
 export const Route = createFileRoute("/_authenticated/reports")({
   head: () => ({
     meta: [
-      { title: "Reports — Sentinel AI Exam Monitoring" },
+      { title: "Reports — Vigilant Eye AI Smart Surveillance" },
       {
         name: "description",
         content: "Detection trends, per-camera event volume and operator confirmation rates.",

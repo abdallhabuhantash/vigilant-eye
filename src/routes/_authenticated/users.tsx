@@ -1,3 +1,4 @@
+import { requireAdministrator } from "@/lib/require-admin";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
@@ -15,9 +16,10 @@ import { createAccount } from "@/lib/admin-users.functions";
 import { formatRelative } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/users")({
+  beforeLoad: requireAdministrator,
   head: () => ({
     meta: [
-      { title: "Users & Roles — Sentinel AI Exam Monitoring" },
+      { title: "Users & Roles — Vigilant Eye AI Smart Surveillance" },
       {
         name: "description",
         content: "Administrator and operator accounts with role-based access to the system.",

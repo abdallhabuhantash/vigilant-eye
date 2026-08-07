@@ -20,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAuth } from "@/hooks/use-auth";
 import { useEvents, useEventsSummary, useReviewEvent } from "@/hooks/use-monitoring";
 import { useRealtimeEvents } from "@/hooks/use-realtime-events";
 import { formatTimestamp } from "@/lib/format";
@@ -29,7 +28,7 @@ import type { EventSeverity, EventStatus } from "@/types";
 export const Route = createFileRoute("/_authenticated/events")({
   head: () => ({
     meta: [
-      { title: "Events — Sentinel AI Exam Monitoring" },
+      { title: "Events — Vigilant Eye AI Smart Surveillance" },
       {
         name: "description",
         content:
@@ -44,7 +43,6 @@ function EventsPage() {
   const events = useEvents();
   const summary = useEventsSummary();
   const review = useReviewEvent();
-  const { user } = useAuth();
   useRealtimeEvents();
   const [query, setQuery] = useState("");
   const [severity, setSeverity] = useState<EventSeverity | "all">("all");
@@ -64,7 +62,8 @@ function EventsPage() {
     [events.data, query, severity, status],
   );
   const decide = (id: string, next: EventStatus) => {
-    review.mutate({ id, status: next, reviewer: user?.fullName ?? "Unknown" });
+    // The reviewer identity is recorded server-side from the signed-in session.
+    review.mutate({ id, status: next });
   };
   return (
     <>

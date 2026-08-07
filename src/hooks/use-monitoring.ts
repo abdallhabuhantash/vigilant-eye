@@ -7,12 +7,25 @@ import {
   systemService,
   usersService,
 } from "@/services/monitoring-service";
-import type { AiRule, EventStatus, SystemSettings } from "@/types";
+import type { AiRule, EventStatus, OperationMode, SystemSettings } from "@/types";
 
 const LIVE_REFRESH_MS = 15_000;
+const HEARTBEAT_REFRESH_MS = 10_000;
+
+/** Explicit demo/live switch, stored in system settings. */
+export const useOperationMode = () =>
+  useQuery<OperationMode>({
+    queryKey: ["system", "mode"],
+    queryFn: systemService.operationMode,
+    refetchInterval: LIVE_REFRESH_MS,
+  });
 
 export const useCameras = () =>
-  useQuery({ queryKey: ["cameras"], queryFn: camerasService.list });
+  useQuery({
+    queryKey: ["cameras"],
+    queryFn: camerasService.list,
+    refetchInterval: HEARTBEAT_REFRESH_MS,
+  });
 
 export const useCameraSummary = () =>
   useQuery({
@@ -42,19 +55,25 @@ export const useAiRules = () => useQuery({ queryKey: ["ai-rules"], queryFn: rule
 
 export const useUsers = () => useQuery({ queryKey: ["users"], queryFn: usersService.list });
 
-export const useAiServiceStatus = () =>
-  useQuery({
-    queryKey: ["system", "ai"],
-    queryFn: systemService.aiStatus,
-    refetchInterval: LIVE_REFRESH_MS,
+export const useAiServiceStatus = () => {
+  const mode = useOperationMode();
+  return useQuery({
+    queryKey: ["system", "ai", mode.data ?? "demo"],
+    queryFn: () => systemService.aiStatus(mode.data ?? "demo"),
+    enabled: mode.data !== undefined,
+    refetchInterval: HEARTBEAT_REFRESH_MS,
   });
+};
 
-export const useNvrStatus = () =>
-  useQuery({
-    queryKey: ["system", "nvr"],
-    queryFn: systemService.nvrStatus,
-    refetchInterval: LIVE_REFRESH_MS,
+export const useNvrStatus = () => {
+  const mode = useOperationMode();
+  return useQuery({
+    queryKey: ["system", "nvr", mode.data ?? "demo"],
+    queryFn: () => systemService.nvrStatus(mode.data ?? "demo"),
+    enabled: mode.data !== undefined,
+    refetchInterval: HEARTBEAT_REFRESH_MS,
   });
+};
 
 export const useSystemSettings = () =>
   useQuery({ queryKey: ["system", "settings"], queryFn: systemService.settings });
@@ -65,8 +84,8 @@ export const useReportSummary = (range: "7d" | "30d") =>
 export function useReviewEvent() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { id: string; status: EventStatus; reviewer: string }) =>
-      eventsService.review(input.id, input.status, input.reviewer),
+    mutationFn: (input: { id: string; status: EventStatus; note?: string }) =>
+      eventsService.review(input.id, input.status, input.note),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["events"] });
     },
@@ -87,10 +106,9 @@ export function useUpdateRule() {
 export function useToggleCameraFlag() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { id: string; field: "aiEnabled" | "recording"; value: boolean }) =>
-      input.field === "aiEnabled"
-        ? camerasService.toggleAi(input.id, input.value)
-        : camerasService.toggleRecording(input.id, input.value),
+    // Recording state is reported by the NVR / AI service, never set from the browser.
+    mutationFn: (input: { id: string; field: "aiEnabled"; value: boolean }) =>
+      camerasService.toggleAi(input.id, input.value),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["cameras"] });
     },
@@ -103,6 +121,7 @@ export function useUpdateSettings() {
     mutationFn: (patch: Partial<SystemSettings>) => systemService.updateSettings(patch),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["system", "settings"] });
+      void queryClient.invalidateQueries({ queryKey: ["system"] });
     },
   });
 }

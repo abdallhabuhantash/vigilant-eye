@@ -4,6 +4,7 @@
  * by the external Python AI service using its service credentials.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { AI_HEARTBEAT_STALE_MS, NVR_HEARTBEAT_STALE_MS, isFresh } from "@/lib/health";
 import type {
   AiRule,
   AiServiceStatus,
@@ -14,6 +15,7 @@ import type {
   EventStatus,
   EventsSummary,
   NvrStatus,
+  OperationMode,
   ReportSummary,
   SystemSettings,
 } from "@/types";
@@ -97,10 +99,6 @@ export const camerasService = {
     const { error } = await supabase.from("cameras").update({ ai_enabled: enabled }).eq("id", id);
     fail(error);
   },
-  toggleRecording: async (id: string, recording: boolean): Promise<void> => {
-    const { error } = await supabase.from("cameras").update({ recording }).eq("id", id);
-    fail(error);
-  },
   create: async (input: {
     name: string;
     location: string;
@@ -154,11 +152,17 @@ export const eventsService = {
       rejected: events.filter((e) => e.status === "rejected").length,
     };
   },
-  review: async (id: string, status: EventStatus, reviewer: string): Promise<void> => {
-    const { error } = await supabase
-      .from("events")
-      .update({ status, reviewed_by: reviewer, reviewed_at: new Date().toISOString() })
-      .eq("id", id);
+  /**
+   * Review goes through a secure database function. Detection evidence
+   * (type, confidence, camera, rule, timestamps, snapshot) cannot be changed
+   * by any signed-in user; only the review outcome is writable.
+   */
+  review: async (id: string, status: EventStatus, note?: string): Promise<void> => {
+    const { error } = await supabase.rpc("review_event", {
+      _event_id: id,
+      _status: status,
+      _note: note ?? null,
+    } as never);
     fail(error);
   },
   snapshotUrl: async (path: string | null): Promise<string | null> => {
@@ -238,15 +242,26 @@ export const usersService = {
 };
 
 export const systemService = {
-  aiStatus: async (): Promise<AiServiceStatus> => {
+  operationMode: async (): Promise<OperationMode> => {
+    const { data } = await supabase.from("system_settings").select("*").maybeSingle();
+    return ((data as Row)?.operation_mode as OperationMode) ?? "demo";
+  },
+  aiStatus: async (mode: OperationMode): Promise<AiServiceStatus> => {
     const { data } = await supabase
       .from("service_health")
       .select("*")
       .eq("service", "ai")
       .maybeSingle();
-    const payload: Row = data?.payload ?? {};
+    const row: Row = data;
+    const isDemo = Boolean(row?.is_demo);
+    // In live mode a demo placeholder is not a connected service.
+    const usable = row && (mode === "demo" || !isDemo);
+    const payload: Row = usable ? (row.payload ?? {}) : {};
+    const lastPingAt = (row?.updated_at as string) ?? null;
+    const stale = usable ? !isFresh(lastPingAt, AI_HEARTBEAT_STALE_MS) : true;
     return {
-      online: Boolean(data?.online),
+      // A stored `online` flag is only believed while the heartbeat is fresh.
+      online: Boolean(usable && row.online) && !stale,
       version: (payload.version as string) ?? "—",
       model: (payload.model as string) ?? "—",
       device: (payload.device as string) ?? "—",
@@ -254,29 +269,41 @@ export const systemService = {
       queueDepth: Number(payload.queue_depth ?? 0),
       gpuLoadPercent: Number(payload.gpu_load_percent ?? 0),
       uptimeSeconds: Number(payload.uptime_seconds ?? 0),
-      lastPingAt: (data?.updated_at as string) ?? new Date().toISOString(),
+      lastPingAt: lastPingAt ?? "",
+      stale,
+      isDemo: Boolean(usable && isDemo),
+      neverReported: !row || (mode === "live" && isDemo),
     };
   },
-  nvrStatus: async (): Promise<NvrStatus> => {
+  nvrStatus: async (mode: OperationMode): Promise<NvrStatus> => {
     const { data } = await supabase
       .from("service_health")
       .select("*")
       .eq("service", "nvr")
       .maybeSingle();
-    const payload: Row = data?.payload ?? {};
+    const row: Row = data;
+    const isDemo = Boolean(row?.is_demo);
+    const usable = row && (mode === "demo" || !isDemo);
+    const payload: Row = usable ? (row.payload ?? {}) : {};
+    const lastSyncAt = (row?.updated_at as string) ?? null;
+    const stale = usable ? !isFresh(lastSyncAt, NVR_HEARTBEAT_STALE_MS) : true;
     return {
-      online: Boolean(data?.online),
+      online: Boolean(usable && row.online) && !stale,
       model: (payload.model as string) ?? "—",
       channelsUsed: Number(payload.channels_used ?? 0),
       channelsTotal: Number(payload.channels_total ?? 0),
       storageUsedPercent: Number(payload.storage_used_percent ?? 0),
       retentionDays: Number(payload.retention_days ?? 0),
-      lastSyncAt: (data?.updated_at as string) ?? new Date().toISOString(),
+      lastSyncAt: lastSyncAt ?? "",
+      stale,
+      isDemo: Boolean(usable && isDemo),
+      neverReported: !row || (mode === "live" && isDemo),
     };
   },
   settings: async (): Promise<SystemSettings> => {
     const { data } = await supabase.from("system_settings").select("*").maybeSingle();
     return {
+      operationMode: ((data as Row)?.operation_mode as OperationMode) ?? "demo",
       aiServiceUrl: (data?.ai_service_url as string) ?? "",
       websocketUrl: (data?.websocket_url as string) ?? "",
       retentionDays: Number(data?.retention_days ?? 30),
@@ -288,6 +315,7 @@ export const systemService = {
   },
   updateSettings: async (patch: Partial<SystemSettings>): Promise<void> => {
     const payload: Row = { id: true, updated_at: new Date().toISOString() };
+    if (patch.operationMode !== undefined) payload.operation_mode = patch.operationMode;
     if (patch.aiServiceUrl !== undefined) payload.ai_service_url = patch.aiServiceUrl;
     if (patch.websocketUrl !== undefined) payload.websocket_url = patch.websocketUrl;
     if (patch.retentionDays !== undefined) payload.retention_days = patch.retentionDays;
