@@ -9,6 +9,7 @@ import {
   eventTypeLabel,
 } from "@/components/common/EventBadges";
 import { Panel } from "@/components/common/Panel";
+import { EventDetailsDialog } from "@/components/events/EventDetailsDialog";
 import { StatTile } from "@/components/common/StatTile";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { TopBar } from "@/components/layout/TopBar";
@@ -25,7 +26,7 @@ import { useEvents, useEventsSummary, useReviewEvent } from "@/hooks/use-monitor
 import { useRealtimeEvents } from "@/hooks/use-realtime-events";
 import { displayPersonId, displaySeverity, formatSeconds } from "@/lib/event-presentation";
 import { formatTimestamp } from "@/lib/format";
-import type { EventSeverity, EventStatus } from "@/types";
+import type { DetectionEvent, EventSeverity, EventStatus } from "@/types";
 
 export const Route = createFileRoute("/_authenticated/events")({
   head: () => ({
@@ -49,6 +50,7 @@ function EventsPage() {
   const [query, setQuery] = useState("");
   const [severity, setSeverity] = useState<EventSeverity | "all">("all");
   const [status, setStatus] = useState<EventStatus | "all">("all");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const filtered = useMemo(
     () =>
       (events.data ?? []).filter((event) => {
@@ -67,6 +69,8 @@ function EventsPage() {
     // The reviewer identity is recorded server-side from the signed-in session.
     review.mutate({ id, status: next });
   };
+  const selected: DetectionEvent | null =
+    (events.data ?? []).find((event) => event.id === selectedId) ?? null;
   return (
     <>
       <TopBar title="Event Review" subtitle="AI detections require operator confirmation" />
@@ -144,7 +148,11 @@ function EventsPage() {
             </thead>
             <tbody className="divide-y divide-border/50">
               {filtered.map((event) => (
-                <tr key={event.id} className="hover:bg-surface-2/60">
+                <tr
+                  key={event.id}
+                  className="cursor-pointer hover:bg-surface-2/60"
+                  onClick={() => setSelectedId(event.id)}
+                >
                   <td className="px-3 py-2 font-mono text-[11px] text-muted-foreground">
                     {event.id}
                   </td>
@@ -172,7 +180,7 @@ function EventsPage() {
                     <StatusBadge status={event.status} />
                   </td>
                   <td className="px-3 py-2">
-                    <div className="flex justify-end gap-1.5">
+                    <div className="flex justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                       <Button
                         size="sm"
                         variant="outline"
@@ -191,6 +199,14 @@ function EventsPage() {
                       >
                         <X className="size-3" /> Reject
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-[11px]"
+                        onClick={() => setSelectedId(event.id)}
+                      >
+                        Details
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -202,6 +218,12 @@ function EventsPage() {
           )}
         </Panel>
       </PageContainer>
+      <EventDetailsDialog
+        event={selected}
+        pending={review.isPending}
+        onOpenChange={(open) => !open && setSelectedId(null)}
+        onReview={(input) => review.mutate(input)}
+      />
     </>
   );
 }
