@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { AlertTriangle, Filter, Image as ImageIcon } from "lucide-react";
 import { AssociationBadge, StatusBadge } from "@/components/common/EventBadges";
 import { Button } from "@/components/ui/button";
+import { useEventSnapshot } from "@/hooks/use-monitoring";
 import {
   displayPersonId,
   displaySeverity,
@@ -13,7 +14,35 @@ import { formatRelative } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { DetectionEvent } from "@/types";
 
-function LiveEventCard({ event }: { event: DetectionEvent }) {
+/**
+ * Small evidence thumbnail from a short-lived signed URL. Nothing is persisted:
+ * the private snapshots bucket stays private and the URL is never stored.
+ */
+function EvidenceThumbnail({ event, enabled }: { event: DetectionEvent; enabled: boolean }) {
+  const snapshot = useEventSnapshot(event.snapshotPath, enabled);
+  const showImage = Boolean(event.snapshotPath) && !snapshot.isError && Boolean(snapshot.data);
+  return (
+    <div className="relative grid aspect-[4/3] place-items-center overflow-hidden border border-border bg-background hud-grid">
+      {showImage ? (
+        <img
+          src={snapshot.data ?? ""}
+          alt={`Snapshot evidence for ${eventTitle(event)} on ${event.cameraName}`}
+          className="size-full object-cover"
+          loading="lazy"
+        />
+      ) : (
+        <ImageIcon className="size-4 text-muted-foreground" />
+      )}
+      {event.sourceMode === "demo" && (
+        <span className="absolute left-1 top-1 border border-warning/40 bg-background/80 px-0.5 font-mono text-[7px] text-warning">
+          DEMO
+        </span>
+      )}
+    </div>
+  );
+}
+
+function LiveEventCard({ event, enableSnapshot }: { event: DetectionEvent; enableSnapshot: boolean }) {
   // Structured fields only — never parsed out of the reviewer note.
   const person = displayPersonId(event);
   const subtitle = eventSubtitle(event);
@@ -26,14 +55,7 @@ function LiveEventCard({ event }: { event: DetectionEvent }) {
         severity === "warning" && "border-l-2 border-l-warning",
       )}
     >
-      <div className="relative grid aspect-[4/3] place-items-center overflow-hidden border border-border bg-background hud-grid">
-        <ImageIcon className="size-4 text-muted-foreground" />
-        {event.sourceMode === "demo" && (
-          <span className="absolute left-1 top-1 border border-warning/40 bg-background/80 px-0.5 font-mono text-[7px] text-warning">
-            DEMO
-          </span>
-        )}
-      </div>
+      <EvidenceThumbnail event={event} enabled={enableSnapshot} />
       <div className="min-w-0">
         <div className="flex items-start justify-between gap-2">
           <span
@@ -96,8 +118,9 @@ export function LiveEventPanel({ events }: { events: DetectionEvent[] }) {
         </div>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {events.map((event) => (
-          <LiveEventCard key={event.id} event={event} />
+        {events.map((event, index) => (
+          // Signed URLs are only requested for the first few visible events.
+          <LiveEventCard key={event.id} event={event} enableSnapshot={index < 8} />
         ))}
       </div>
       <div className="border-t border-border p-2 text-center font-mono text-[8px] uppercase text-muted-foreground">

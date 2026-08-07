@@ -6,6 +6,10 @@ import {
   StatusBadge,
 } from "@/components/common/EventBadges";
 import { DetectionOverlayLayer } from "@/components/monitoring/DetectionOverlayLayer";
+import {
+  ReviewConfirmDialog,
+  type ReviewDecision,
+} from "@/components/events/ReviewConfirmDialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -96,6 +100,7 @@ export function EventDetailsDialog({
 }) {
   const [note, setNote] = useState("");
   const [showOverlay, setShowOverlay] = useState(true);
+  const [pendingDecision, setPendingDecision] = useState<ReviewDecision | null>(null);
   if (!event) return null;
   const subtitle = eventSubtitle(event);
   const decide = (status: EventStatus) => {
@@ -184,7 +189,7 @@ export function EventDetailsDialog({
                   variant="outline"
                   className="h-7 px-2 text-[11px] text-success"
                   disabled={pending || event.status === "confirmed"}
-                  onClick={() => decide("confirmed")}
+                  onClick={() => setPendingDecision("confirmed")}
                 >
                   Confirm
                 </Button>
@@ -193,7 +198,7 @@ export function EventDetailsDialog({
                   variant="outline"
                   className="h-7 px-2 text-[11px] text-destructive"
                   disabled={pending || event.status === "rejected"}
-                  onClick={() => decide("rejected")}
+                  onClick={() => setPendingDecision("rejected")}
                 >
                   Reject
                 </Button>
@@ -201,6 +206,14 @@ export function EventDetailsDialog({
             </div>
           </div>
         </div>
+        <ReviewConfirmDialog
+          decision={pendingDecision}
+          onOpenChange={(open) => !open && setPendingDecision(null)}
+          onConfirm={(decision) => {
+            decide(decision);
+            setPendingDecision(null);
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
