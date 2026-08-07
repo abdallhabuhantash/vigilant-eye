@@ -130,6 +130,7 @@ export function useReviewEvent() {
       eventsService.review(input.id, input.status, input.note),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["events"] });
+      void queryClient.invalidateQueries({ queryKey: ["reports"] });
     },
   });
 }

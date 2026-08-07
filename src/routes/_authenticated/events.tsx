@@ -10,6 +10,7 @@ import {
 } from "@/components/common/EventBadges";
 import { Panel } from "@/components/common/Panel";
 import { EventDetailsDialog } from "@/components/events/EventDetailsDialog";
+import { ReviewConfirmDialog, type ReviewDecision } from "@/components/events/ReviewConfirmDialog";
 import { StatTile } from "@/components/common/StatTile";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { TopBar } from "@/components/layout/TopBar";
@@ -51,6 +52,11 @@ function EventsPage() {
   const [severity, setSeverity] = useState<EventSeverity | "all">("all");
   const [status, setStatus] = useState<EventStatus | "all">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Confirm / Reject always pass through an explicit confirmation step.
+  const [pendingDecision, setPendingDecision] = useState<{
+    id: string;
+    decision: ReviewDecision;
+  } | null>(null);
   const filtered = useMemo(
     () =>
       (events.data ?? []).filter((event) => {
@@ -76,7 +82,7 @@ function EventsPage() {
       <TopBar title="Event Review" subtitle="AI detections require operator confirmation" />
       <PageContainer>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-          <StatTile label="Total events" value={summary.data?.today ?? 0} />
+          <StatTile label="Events Today" value={summary.data?.today ?? 0} />
           <StatTile label="Critical" value={summary.data?.critical ?? 0} tone="critical" />
           <StatTile
             label="Pending review"
@@ -186,7 +192,7 @@ function EventsPage() {
                         variant="outline"
                         className="h-7 gap-1 px-2 text-[11px] text-success"
                         disabled={event.status === "confirmed" || review.isPending}
-                        onClick={() => decide(event.id, "confirmed")}
+                        onClick={() => setPendingDecision({ id: event.id, decision: "confirmed" })}
                       >
                         <Check className="size-3" /> Confirm
                       </Button>
@@ -195,7 +201,7 @@ function EventsPage() {
                         variant="outline"
                         className="h-7 gap-1 px-2 text-[11px] text-destructive"
                         disabled={event.status === "rejected" || review.isPending}
-                        onClick={() => decide(event.id, "rejected")}
+                        onClick={() => setPendingDecision({ id: event.id, decision: "rejected" })}
                       >
                         <X className="size-3" /> Reject
                       </Button>
@@ -223,6 +229,14 @@ function EventsPage() {
         pending={review.isPending}
         onOpenChange={(open) => !open && setSelectedId(null)}
         onReview={(input) => review.mutate(input)}
+      />
+      <ReviewConfirmDialog
+        decision={pendingDecision?.decision ?? null}
+        onOpenChange={(open) => !open && setPendingDecision(null)}
+        onConfirm={(decision) => {
+          if (pendingDecision) decide(pendingDecision.id, decision);
+          setPendingDecision(null);
+        }}
       />
     </>
   );
