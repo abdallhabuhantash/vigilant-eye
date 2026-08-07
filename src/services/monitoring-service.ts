@@ -211,7 +211,7 @@ export const eventsService = {
    */
   today: async (mode?: OperationMode): Promise<DetectionEvent[]> => {
     const dayStart = startOfZonedDay();
-    const dayEnd = startOfZonedDay(addDays(dayStart, 1) as Date);
+    const dayEnd = startOfZonedDay(addDays(dayStart, 1));
     let query = supabase
       .from("events")
       .select("*")
@@ -436,57 +436,101 @@ export const systemService = {
   },
 };
 
+/**
+ * Average minutes between detection and a completed human review.
+ * Null when no completed review exists; malformed/negative spans are ignored.
+ */
+export function averageReviewMinutes(events: DetectionEvent[]): number | null {
+  const spans = events
+    .filter((event) => event.status === "confirmed" || event.status === "rejected")
+    .map((event) => {
+      if (!event.reviewedAt) return null;
+      const detected = new Date(event.detectedAt).getTime();
+      const reviewed = new Date(event.reviewedAt).getTime();
+      if (!Number.isFinite(detected) || !Number.isFinite(reviewed)) return null;
+      const minutes = (reviewed - detected) / 60_000;
+      return minutes < 0 ? null : minutes;
+    })
+    .filter((value): value is number => value !== null);
+  if (spans.length === 0) return null;
+  return spans.reduce((sum, value) => sum + value, 0) / spans.length;
+}
+
 export const reportsService = {
-  summary: async (range: "7d" | "30d"): Promise<ReportSummary> => {
-    const days = range === "7d" ? 7 : 30;
-    const since = new Date(Date.now() - days * 86_400_000).toISOString();
+  /** Every report metric is scoped to one operation mode; demo and live never mix. */
+  summary: async (range: "7d" | "30d", mode: OperationMode): Promise<ReportSummary> => {
+    const buckets = range === "7d" ? 7 : 4;
+    const bucketDays = range === "7d" ? 1 : 7;
+    // Buckets align to Asia/Amman calendar days, ending with today.
+    const todayStart = startOfZonedDay();
+    const rangeStart = startOfZonedDay(addDays(todayStart, -(buckets - 1) * bucketDays));
+    const rangeEnd = startOfZonedDay(addDays(todayStart, 1));
+
     const { data, error } = await supabase
       .from("events")
       .select("*")
-      .gte("detected_at", since)
+      .eq("source_mode", mode)
+      .gte("detected_at", rangeStart.toISOString())
+      .lt("detected_at", rangeEnd.toISOString())
       .order("detected_at");
     fail(error);
     const events = (data ?? []).map(toEvent);
 
-    const buckets = range === "7d" ? 7 : 4;
-    const bucketMs = range === "7d" ? 86_400_000 : 7 * 86_400_000;
-    const start = Date.now() - buckets * bucketMs;
-    const timeline = Array.from({ length: buckets }, (_, index) => {
-      const from = start + index * bucketMs;
-      const to = from + bucketMs;
+    const bucketBounds = Array.from({ length: buckets }, (_, index) => {
+      const from = startOfZonedDay(addDays(rangeStart, index * bucketDays));
+      const to = startOfZonedDay(addDays(from, bucketDays));
+      return { from, to };
+    });
+
+    const timeline = bucketBounds.map(({ from, to }, index) => {
       const inBucket = events.filter((event) => {
         const at = new Date(event.detectedAt).getTime();
-        return at >= from && at < to;
+        return at >= from.getTime() && at < to.getTime();
       });
       return {
-        label:
-          range === "7d"
-            ? new Date(from).toLocaleDateString(undefined, { weekday: "short" })
-            : `W${index + 1}`,
+        label: range === "7d" ? zonedWeekdayLabel(from) : `W${index + 1}`,
         events: inBucket.length,
         confirmed: inBucket.filter((event) => event.status === "confirmed").length,
       };
     });
 
     const byCameraMap = new Map<string, number>();
+    const byTypeMap = new Map<string, number>();
+    const bySeverity = { critical: 0, warning: 0, info: 0 };
     events.forEach((event) => {
       byCameraMap.set(event.cameraName, (byCameraMap.get(event.cameraName) ?? 0) + 1);
+      // Unknown/future event types are counted safely by their raw identifier.
+      byTypeMap.set(event.type, (byTypeMap.get(event.type) ?? 0) + 1);
+      bySeverity[effectiveSeverity(event)] += 1;
     });
 
-    const reviewed = events.filter(
-      (event) => event.status === "confirmed" || event.status === "rejected",
-    );
+    const confirmed = events.filter((event) => event.status === "confirmed").length;
+    const rejected = events.filter((event) => event.status === "rejected").length;
+    const pending = events.filter(
+      (event) => event.status === "new" || event.status === "under_review",
+    ).length;
+    const reviewedCount = confirmed + rejected;
 
     return {
       range,
+      mode,
+      totalEvents: events.length,
       timeline,
       byCamera: [...byCameraMap.entries()]
         .map(([cameraName, count]) => ({ cameraName, events: count }))
         .sort((a, b) => b.events - a.events),
-      confirmationRate: reviewed.length
-        ? events.filter((event) => event.status === "confirmed").length / reviewed.length
+      byType: [...byTypeMap.entries()]
+        .map(([type, count]) => ({ type, events: count }))
+        .sort((a, b) => b.events - a.events),
+      bySeverity,
+      confirmed,
+      rejected,
+      pending,
+      averageConfidence: events.length
+        ? events.reduce((sum, event) => sum + event.confidence, 0) / events.length
         : 0,
-      averageReviewMinutes: 0,
+      confirmationRate: reviewedCount ? confirmed / reviewedCount : 0,
+      averageReviewMinutes: averageReviewMinutes(events),
     };
   },
 };
