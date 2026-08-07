@@ -221,7 +221,7 @@ export const demoEvents: DetectionEvent[] = [
     snapshotUrl: null,
     detectedAt: new Date(now - 520_000).toISOString(),
     reviewedBy: "Operator",
-    reviewedAt: null,
+    reviewedAt: new Date(now - 400_000).toISOString(),
     note: "Reviewed as a false positive.",
     personTrackingId: null,
     triggerObjectClass: "cell_phone",
