@@ -179,3 +179,43 @@ export function useUpdateSettings() {
     },
   });
 }
+
+/** Camera configuration mutations. RLS restricts these to administrators. */
+function useCameraMutation<TInput>(fn: (input: TInput) => Promise<void>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["cameras"] });
+      void queryClient.invalidateQueries({ queryKey: ["ai-rules"] });
+    },
+  });
+}
+
+export const useCreateCamera = () =>
+  useCameraMutation((input: CameraConfigInput) => camerasService.create(input));
+
+export const useUpdateCamera = () =>
+  useCameraMutation((input: { id: string; config: CameraConfigInput }) =>
+    camerasService.update(input.id, input.config),
+  );
+
+export const useArchiveCamera = () =>
+  useCameraMutation((id: string) => camerasService.archive(id));
+
+export const useRestoreCamera = () =>
+  useCameraMutation((id: string) => camerasService.restore(id));
+
+/**
+ * Temporary signed URL for a private snapshot. Nothing is persisted; the URL
+ * is refetched before the five-minute signature expires.
+ */
+export const useEventSnapshot = (snapshotPath: string | null, enabled = true) =>
+  useQuery({
+    queryKey: ["snapshot", snapshotPath],
+    queryFn: () => eventsService.createSnapshotSignedUrl(snapshotPath),
+    enabled: enabled && Boolean(snapshotPath),
+    staleTime: 240_000,
+    refetchInterval: 240_000,
+    retry: 1,
+  });
