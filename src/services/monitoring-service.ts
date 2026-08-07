@@ -273,13 +273,13 @@ export const systemService = {
     return {
       // A stored `online` flag is only believed while the heartbeat is fresh.
       online: Boolean(usable && row.online) && !stale,
-      version: (payload.version as string) ?? "—",
-      model: (payload.model as string) ?? "—",
-      device: (payload.device as string) ?? "—",
-      inferenceFps: Number(payload.inference_fps ?? 0),
-      queueDepth: Number(payload.queue_depth ?? 0),
-      gpuLoadPercent: Number(payload.gpu_load_percent ?? 0),
-      uptimeSeconds: Number(payload.uptime_seconds ?? 0),
+      version: (payload["version"] as string) ?? "—",
+      model: (payload["model"] as string) ?? "—",
+      device: (payload["device"] as string) ?? "—",
+      inferenceFps: Number(payload["inference_fps"] ?? 0),
+      queueDepth: Number(payload["queue_depth"] ?? 0),
+      gpuLoadPercent: Number(payload["gpu_load_percent"] ?? 0),
+      uptimeSeconds: Number(payload["uptime_seconds"] ?? 0),
       lastPingAt: lastPingAt ?? "",
       stale,
       isDemo: Boolean(usable && isDemo),
@@ -300,11 +300,11 @@ export const systemService = {
     const stale = usable ? !isFresh(lastSyncAt, NVR_HEARTBEAT_STALE_MS) : true;
     return {
       online: Boolean(usable && row.online) && !stale,
-      model: (payload.model as string) ?? "—",
-      channelsUsed: Number(payload.channels_used ?? 0),
-      channelsTotal: Number(payload.channels_total ?? 0),
-      storageUsedPercent: Number(payload.storage_used_percent ?? 0),
-      retentionDays: Number(payload.retention_days ?? 0),
+      model: (payload["model"] as string) ?? "—",
+      channelsUsed: Number(payload["channels_used"] ?? 0),
+      channelsTotal: Number(payload["channels_total"] ?? 0),
+      storageUsedPercent: Number(payload["storage_used_percent"] ?? 0),
+      retentionDays: Number(payload["retention_days"] ?? 0),
       lastSyncAt: lastSyncAt ?? "",
       stale,
       isDemo: Boolean(usable && isDemo),
@@ -332,7 +332,7 @@ export const systemService = {
     if (patch.operationMode !== undefined) payload.operation_mode = patch.operationMode;
     if (patch.aiServiceUrl !== undefined) payload.ai_service_url = patch.aiServiceUrl;
     if (patch.websocketUrl !== undefined) payload.websocket_url = patch.websocketUrl;
-    if (patch.retentionDays !== undefined) payload.retention_days = patch.retentionDays;
+    if (patch.retentionDays !== undefined) payload["retention_days"] = patch.retentionDays;
     if (patch.snapshotStorage !== undefined) payload.snapshot_storage = patch.snapshotStorage;
     if (patch.soundAlerts !== undefined) payload.sound_alerts = patch.soundAlerts;
     if (patch.autoAcknowledgeMinutes !== undefined)
