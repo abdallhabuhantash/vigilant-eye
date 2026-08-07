@@ -419,6 +419,9 @@ export const systemService = {
     const payload = usable ? jsonRecord(row.payload) : {};
     const lastPingAt = (row?.updated_at as string) ?? null;
     const stale = usable ? !isFresh(lastPingAt, AI_HEARTBEAT_STALE_MS) : true;
+    // Notification readiness is only trusted while the heartbeat is fresh.
+    const notificationChannels = jsonRecord(payload["notification_channels"]);
+    const telegram = jsonRecord(notificationChannels["telegram"]);
     return {
       // A stored `online` flag is only believed while the heartbeat is fresh.
       online: Boolean(usable && row.online) && !stale,
@@ -433,6 +436,8 @@ export const systemService = {
       stale,
       isDemo: Boolean(usable && isDemo),
       neverReported: !row || (mode === "live" && isDemo),
+      telegramConfigured: !stale && telegram["configured"] === true,
+      telegramReady: !stale && telegram["ready"] === true,
     };
   },
   nvrStatus: async (mode: OperationMode): Promise<NvrStatus> => {
