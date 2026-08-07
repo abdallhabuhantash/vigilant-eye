@@ -1,11 +1,7 @@
 import { cn } from "@/lib/utils";
-import type { EventSeverity, EventStatus, EventType } from "@/types";
+import type { AssociationStatus, EventSeverity, EventStatus } from "@/types";
 
-export const eventTypeLabel: Record<EventType, string> = {
-  suspicious_cheating_activity: "Suspicious Cheating Activity",
-  possible_cheating_activity: "Possible Cheating Activity",
-  mobile_phone_detected: "Mobile Phone Detected",
-};
+export { eventTypeLabel } from "@/lib/event-presentation";
 
 export const eventStatusLabel: Record<EventStatus, string> = {
   new: "New",
@@ -51,4 +47,22 @@ export function ConfidenceMeter({ value }: { value: number }) {
       <span className="font-mono text-xs tabular-nums text-muted-foreground">{percent}%</span>
     </div>
   );
+}
+
+const associationClass: Record<AssociationStatus, string> = {
+  associated: "border-primary/60 text-primary bg-primary/10",
+  uncertain: "border-warning/60 text-warning bg-warning/10",
+  unassociated: "border-border text-muted-foreground bg-muted/40",
+  not_applicable: "border-border text-muted-foreground bg-muted/20",
+};
+
+const associationText: Record<AssociationStatus, string> = {
+  associated: "associated",
+  uncertain: "uncertain",
+  unassociated: "no person",
+  not_applicable: "n/a",
+};
+
+export function AssociationBadge({ status }: { status: AssociationStatus }) {
+  return <span className={cn(base, associationClass[status])}>{associationText[status]}</span>;
 }
