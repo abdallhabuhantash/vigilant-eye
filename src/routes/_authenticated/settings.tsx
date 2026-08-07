@@ -1,12 +1,26 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Panel } from "@/components/common/Panel";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { useSystemSettings, useUpdateSettings } from "@/hooks/use-monitoring";
+import {
+  useAiServiceStatus,
+  useNvrStatus,
+  useSystemSettings,
+  useUpdateSettings,
+} from "@/hooks/use-monitoring";
+import {
+  aiHealthState,
+  componentHealthLabel,
+  nvrHealthState,
+} from "@/lib/health";
+import { formatRelative } from "@/lib/format";
 import { requireAdministrator } from "@/lib/require-admin";
 
 export const Route = createFileRoute("/_authenticated/settings")({
@@ -23,7 +37,10 @@ export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
 });
 
-/** Endpoint validation: only absolute URLs with the expected scheme are accepted. */
+/**
+ * Endpoint validation: only absolute URLs with the expected scheme are
+ * accepted, and embedded credentials are always rejected.
+ */
 function validateUrl(value: string, schemes: string[], optional = true): string | null {
   const trimmed = value.trim();
   if (trimmed === "") return optional ? null : "This endpoint is required";
@@ -35,18 +52,9 @@ function validateUrl(value: string, schemes: string[], optional = true): string 
   }
   if (!schemes.includes(parsed.protocol.replace(":", "")))
     return `URL must start with ${schemes.map((scheme) => `${scheme}://`).join(" or ")}`;
+  if (parsed.username !== "" || parsed.password !== "")
+    return "Credentials must not be embedded in browser-visible service URLs.";
   return null;
-}
-
-function validateTimezone(value: string): string | null {
-  const trimmed = value.trim();
-  if (trimmed === "") return "Timezone is required";
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone: trimmed });
-    return null;
-  } catch {
-    return "Enter a valid IANA timezone, e.g. Asia/Amman";
-  }
 }
 
 function SettingsPage() {
@@ -58,7 +66,6 @@ function SettingsPage() {
   const [draft, setDraft] = useState({
     aiServiceUrl: "",
     websocketUrl: "",
-    timezone: "",
     retentionDays: "30",
     autoAcknowledgeMinutes: "30",
   });
@@ -70,7 +77,6 @@ function SettingsPage() {
     setDraft({
       aiServiceUrl: data.aiServiceUrl,
       websocketUrl: data.websocketUrl,
-      timezone: data.timezone,
       retentionDays: String(data.retentionDays),
       autoAcknowledgeMinutes: String(data.autoAcknowledgeMinutes),
     });
@@ -85,7 +91,6 @@ function SettingsPage() {
     data !== undefined &&
     (draft.aiServiceUrl !== data.aiServiceUrl ||
       draft.websocketUrl !== data.websocketUrl ||
-      draft.timezone !== data.timezone ||
       draft.retentionDays !== String(data.retentionDays) ||
       draft.autoAcknowledgeMinutes !== String(data.autoAcknowledgeMinutes));
 
@@ -95,8 +100,6 @@ function SettingsPage() {
     if (aiError) next["aiServiceUrl"] = aiError;
     const wsError = validateUrl(draft.websocketUrl, ["ws", "wss"]);
     if (wsError) next["websocketUrl"] = wsError;
-    const tzError = validateTimezone(draft.timezone);
-    if (tzError) next["timezone"] = tzError;
     const retention = Number(draft.retentionDays);
     if (!Number.isInteger(retention) || retention < 1 || retention > 3650)
       next["retentionDays"] = "Retention must be between 1 and 3650 days";
@@ -109,7 +112,6 @@ function SettingsPage() {
       {
         aiServiceUrl: draft.aiServiceUrl.trim(),
         websocketUrl: draft.websocketUrl.trim(),
-        timezone: draft.timezone.trim(),
         retentionDays: retention,
         autoAcknowledgeMinutes: ack,
       },
@@ -124,7 +126,6 @@ function SettingsPage() {
     setDraft({
       aiServiceUrl: data.aiServiceUrl,
       websocketUrl: data.websocketUrl,
-      timezone: data.timezone,
       retentionDays: String(data.retentionDays),
       autoAcknowledgeMinutes: String(data.autoAcknowledgeMinutes),
     });
@@ -180,14 +181,18 @@ function SettingsPage() {
                 className="h-8 font-mono text-xs"
               />
             </Field>
-            <Field label="Timezone" error={errors["timezone"]}>
-              <Input
-                value={draft.timezone}
-                onChange={(event) => set("timezone", event.target.value)}
-                placeholder="Asia/Amman"
-                className="h-8 font-mono text-xs"
-              />
-            </Field>
+            <div className="space-y-1">
+              <span className="label-tech text-muted-foreground">
+                Operational reporting timezone
+              </span>
+              <div className="flex h-8 items-center rounded-[4px] border border-border/70 bg-surface-2/50 px-2.5 font-mono text-xs text-foreground">
+                {data?.timezone ?? "Asia/Amman"}
+              </div>
+              <span className="block text-[10px] text-muted-foreground">
+                Fixed for this build. All day boundaries and reports are calculated in this
+                timezone.
+              </span>
+            </div>
           </Panel>
           <Panel title="Retention & alerting" bodyClassName="space-y-3 p-3">
             <Field label="Retention (days)" error={errors["retentionDays"]}>
@@ -236,9 +241,126 @@ function SettingsPage() {
               {update.isPending ? "Saving…" : "Save settings"}
             </Button>
           </div>
+          <HealthSection />
+          <NotificationReadiness soundAlerts={data?.soundAlerts ?? false} />
         </div>
       </PageContainer>
     </>
+  );
+}
+
+/** Compact truthful health readout. Values are only shown when reported. */
+function HealthSection() {
+  const ai = useAiServiceStatus();
+  const nvr = useNvrStatus();
+  const queryClient = useQueryClient();
+  const aiState = aiHealthState(ai.data);
+  const nvrState = nvrHealthState(nvr.data);
+  const reported = (value: string | undefined) =>
+    value && value !== "—" && value.trim() !== "" ? value : null;
+
+  const refresh = () => {
+    // Re-reads the stored health records only. Nothing is pinged directly.
+    void queryClient.invalidateQueries({ queryKey: ["system", "ai"] });
+    void queryClient.invalidateQueries({ queryKey: ["system", "nvr"] });
+    toast.success("Status refreshed");
+  };
+
+  return (
+    <Panel
+      title="Operational health"
+      subtitle="Reported by service heartbeats. Values appear only when actually reported."
+      bodyClassName="grid gap-3 p-3 sm:grid-cols-2 lg:col-span-2"
+      actions={
+        <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-[11px]" onClick={refresh}>
+          <RefreshCw className="size-3" /> Refresh status
+        </Button>
+      }
+    >
+      <div className="rounded-[4px] border border-border/70 bg-background/50 px-3 py-1.5">
+        <HealthRow label="AI service">{componentHealthLabel[aiState]}</HealthRow>
+        <HealthRow label="Last heartbeat">
+          {ai.data?.lastPingAt ? formatRelative(ai.data.lastPingAt) : "Never reported"}
+        </HealthRow>
+        {reported(ai.data?.model) && <HealthRow label="Model">{ai.data?.model}</HealthRow>}
+        {reported(ai.data?.device) && <HealthRow label="Device">{ai.data?.device}</HealthRow>}
+        {reported(ai.data?.version) && <HealthRow label="Version">{ai.data?.version}</HealthRow>}
+        {aiState === "active" && (
+          <HealthRow label="Analysis FPS">{ai.data?.inferenceFps.toFixed(1)}</HealthRow>
+        )}
+      </div>
+      <div className="rounded-[4px] border border-border/70 bg-background/50 px-3 py-1.5">
+        <HealthRow label="NVR">{componentHealthLabel[nvrState]}</HealthRow>
+        <HealthRow label="Last heartbeat">
+          {nvr.data?.lastSyncAt ? formatRelative(nvr.data.lastSyncAt) : "Never reported"}
+        </HealthRow>
+        {reported(nvr.data?.model) && <HealthRow label="Model">{nvr.data?.model}</HealthRow>}
+        {(nvr.data?.channelsTotal ?? 0) > 0 && (
+          <HealthRow label="Channels">
+            {nvr.data?.channelsUsed} / {nvr.data?.channelsTotal}
+          </HealthRow>
+        )}
+        {(nvr.data?.storageUsedPercent ?? 0) > 0 && (
+          <HealthRow label="Storage used">{nvr.data?.storageUsedPercent}%</HealthRow>
+        )}
+        <HealthRow label="Recording">
+          {nvr.data?.recordingActive === true
+            ? "Reported active"
+            : nvr.data?.recordingActive === false
+              ? "Reported inactive"
+              : "Unknown"}
+        </HealthRow>
+      </div>
+    </Panel>
+  );
+}
+
+function HealthRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-border/50 py-1.5 last:border-0">
+      <span className="label-tech text-muted-foreground">{label}</span>
+      <span className="text-right font-mono text-[11px] text-foreground">{children}</span>
+    </div>
+  );
+}
+
+/** Honest capability list. No provider is implemented and no token is collected. */
+function NotificationReadiness({ soundAlerts }: { soundAlerts: boolean }) {
+  const channels: { name: string; state: string; available: boolean }[] = [
+    { name: "In-app alerts", state: "Available", available: true },
+    {
+      name: "Sound alerts",
+      state: soundAlerts ? "Available — Enabled" : "Available — Disabled",
+      available: true,
+    },
+    { name: "Telegram", state: "Not Configured", available: false },
+    { name: "WhatsApp", state: "Not Configured", available: false },
+    { name: "SMS", state: "Not Configured", available: false },
+  ];
+  return (
+    <Panel
+      title="Notification readiness"
+      subtitle="Provider credentials will be handled server-side in a future phase."
+      bodyClassName="space-y-1.5 p-3 lg:col-span-2"
+    >
+      {channels.map((channel) => (
+        <div
+          key={channel.name}
+          className="flex items-center justify-between rounded-[4px] border border-border/70 bg-surface-2/50 px-2.5 py-1.5"
+        >
+          <span className="label-tech text-muted-foreground">{channel.name}</span>
+          <span
+            className={
+              channel.available
+                ? "font-mono text-[11px] text-success"
+                : "font-mono text-[11px] text-muted-foreground"
+            }
+          >
+            {channel.state}
+          </span>
+        </div>
+      ))}
+    </Panel>
   );
 }
 
