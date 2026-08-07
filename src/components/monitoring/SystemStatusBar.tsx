@@ -4,6 +4,13 @@ import { useEffect, useState } from "react";
 import { StatusDot } from "@/components/common/StatusDot";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  aiHealthState,
+  componentHealthLabel,
+  nvrHealthState,
+  systemHealthLabel,
+  systemHealthState,
+} from "@/lib/health";
 import type { AiServiceStatus, CameraFleetSummary, EventsSummary, NvrStatus } from "@/types";
 
 function Clock() {
@@ -31,14 +38,19 @@ function Metric({
   label,
   value,
   online = true,
+  tone = "auto",
 }: {
   label: string;
   value: string;
   online?: boolean;
+  tone?: "auto" | "warning";
 }) {
   return (
     <div className="flex h-full items-center gap-2 border-l border-border/70 px-3">
-      <StatusDot tone={online ? "online" : "offline"} pulse={online} />
+      <StatusDot
+        tone={tone === "warning" ? "degraded" : online ? "online" : "offline"}
+        pulse={online}
+      />
       <div className="leading-tight">
         <p className="font-mono text-[8px] uppercase text-muted-foreground">{label}</p>
         <p className="whitespace-nowrap font-mono text-[10px] uppercase text-foreground">{value}</p>
@@ -62,6 +74,11 @@ export function SystemStatusBar({
 }) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  // Every indicator is independent and only claims what has actually been reported.
+  const aiState = aiHealthState(ai);
+  const nvrState = nvrHealthState(nvr);
+  const overall = systemHealthState({ ai, nvr, camerasOnline: fleet?.online ?? 0 });
+  const recordingActive = nvr?.recordingActive === true;
   const handleSignOut = async () => {
     await signOut();
     await navigate({ to: "/login", replace: true });
@@ -97,8 +114,9 @@ export function SystemStatusBar({
         <div className="hidden h-full min-w-0 lg:flex">
           <Metric
             label="System"
-            value={ai?.online || nvr?.online ? "Online" : "Degraded"}
-            online={Boolean(ai?.online || nvr?.online)}
+            value={systemHealthLabel[overall]}
+            online={overall === "ready"}
+            tone={overall === "degraded" ? "warning" : "auto"}
           />
           <Metric
             label="Cameras"
@@ -107,18 +125,26 @@ export function SystemStatusBar({
           />
           <Metric
             label="AI engine"
-            value={ai?.online ? "Active" : "Offline"}
-            online={Boolean(ai?.online)}
+            value={componentHealthLabel[aiState]}
+            online={aiState === "active" || aiState === "demo"}
+            tone={aiState === "stale" ? "warning" : "auto"}
           />
           <Metric
             label="NVR"
-            value={nvr?.online ? "Recording" : "Offline"}
-            online={Boolean(nvr?.online)}
+            value={
+              nvrState === "online"
+                ? recordingActive
+                  ? "Recording"
+                  : "Online"
+                : componentHealthLabel[nvrState]
+            }
+            online={nvrState === "online" || nvrState === "demo"}
+            tone={nvrState === "stale" ? "warning" : "auto"}
           />
           <Metric
             label="Analysis"
-            value={`${ai?.inferenceFps.toFixed(1) ?? "0.0"} FPS`}
-            online={Boolean(ai?.online)}
+            value={aiState === "active" ? `${ai?.inferenceFps.toFixed(1) ?? "0.0"} FPS` : "—"}
+            online={aiState === "active"}
           />
         </div>
       </div>
@@ -130,8 +156,15 @@ export function SystemStatusBar({
           </div>
         </div>
         <div className="hidden h-full items-center gap-2 border-l border-border/70 px-3 sm:flex">
-          <Radio className="size-3.5 animate-pulse-dot text-destructive" />
-          <span className="font-mono text-[10px] font-bold text-destructive">REC</span>
+          {/* REC is only shown when recording is actually reported. */}
+          {recordingActive ? (
+            <>
+              <Radio className="size-3.5 animate-pulse-dot text-destructive" />
+              <span className="font-mono text-[10px] font-bold text-destructive">REC</span>
+            </>
+          ) : (
+            <span className="font-mono text-[10px] uppercase text-muted-foreground">No REC</span>
+          )}
           <Clock />
         </div>
         <div className="flex h-full items-center gap-2 border-l border-border/70 px-2">
