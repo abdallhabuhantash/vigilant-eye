@@ -10,9 +10,12 @@ import type {
   AiRule,
   AiServiceStatus,
   AppUser,
+  AssociationStatus,
   Camera,
   CameraFleetSummary,
   DetectionEvent,
+  DetectionEvidence,
+  EventSourceMode,
   EventStatus,
   EventsSummary,
   NvrStatus,
@@ -34,6 +37,36 @@ const jsonRecord = (value: Json | null | undefined): Record<string, Json | undef
   value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, Json | undefined>)
     : {};
+
+const numberOrNull = (value: Json | null | undefined): number | null =>
+  value === null || value === undefined ? null : Number(value);
+
+const stringOrNull = (value: Json | null | undefined): string | null =>
+  typeof value === "string" ? value : null;
+
+/** Maps the jsonb evidence array into the typed frontend contract. */
+const toEvidence = (value: Json | null | undefined): DetectionEvidence[] => {
+  if (!Array.isArray(value)) return [];
+  return value.map((entry) => {
+    const item = jsonRecord(entry);
+    const bbox = jsonRecord(item["bbox"]);
+    return {
+      objectId: stringOrNull(item["object_id"]) ?? "",
+      trackingId: stringOrNull(item["tracking_id"]),
+      className: stringOrNull(item["class_name"]) ?? "object",
+      confidence: Number(item["confidence"] ?? 0),
+      bbox: {
+        x: Number(bbox["x"] ?? 0),
+        y: Number(bbox["y"] ?? 0),
+        width: Number(bbox["width"] ?? 0),
+        height: Number(bbox["height"] ?? 0),
+      },
+      role: stringOrNull(item["role"]) ?? "object",
+      associatedPersonTrackingId: stringOrNull(item["associated_person_tracking_id"]),
+      associationConfidence: numberOrNull(item["association_confidence"] ?? null),
+    };
+  });
+};
 
 const fail = (error: { message: string } | null): void => {
   if (error) throw new Error(error.message);
@@ -68,6 +101,19 @@ const toEvent = (row: EventRow): DetectionEvent => ({
   detectedAt: row.detected_at as string,
   reviewedBy: (row.reviewed_by as string) ?? null,
   note: (row.note as string) ?? null,
+  personTrackingId: row.person_tracking_id ?? null,
+  triggerObjectClass: row.trigger_object_class ?? null,
+  triggerConfidence: row.trigger_confidence === null ? null : Number(row.trigger_confidence),
+  associationStatus: (row.association_status as AssociationStatus) ?? "not_applicable",
+  associationConfidence:
+    row.association_confidence === null ? null : Number(row.association_confidence),
+  detectionDurationSeconds:
+    row.detection_duration_seconds === null
+      ? Number(row.duration_seconds ?? 0)
+      : Number(row.detection_duration_seconds),
+  detectionFrameCount: row.detection_frame_count ?? null,
+  evidence: toEvidence(row.evidence),
+  sourceMode: (row.source_mode as EventSourceMode) ?? "live",
 });
 
 const toRule = (row: RuleRow, cameraIds: string[]): AiRule => ({
@@ -77,12 +123,16 @@ const toRule = (row: RuleRow, cameraIds: string[]): AiRule => ({
   available: row.available as boolean,
   enabled: row.enabled as boolean,
   confidenceThreshold: Number(row.confidence_threshold ?? 0),
-  minDurationSeconds: row.min_duration_seconds as number,
+  minDurationSeconds: Number(row.min_duration_seconds ?? 0),
   cooldownSeconds: row.cooldown_seconds as number,
   severity: row.severity as AiRule["severity"],
   cameraIds,
   saveSnapshot: row.save_snapshot as boolean,
   soundNotification: row.sound_notification as boolean,
+  personConfidenceThreshold: Number(row.person_confidence_threshold ?? 0.6),
+  associationConfidenceThreshold: Number(row.association_confidence_threshold ?? 0.65),
+  minMatchingFrames: Number(row.min_matching_frames ?? 5),
+  requirePersonAssociation: Boolean(row.require_person_association),
 });
 
 export const camerasService = {
@@ -211,8 +261,25 @@ export const rulesService = {
     if (patch.severity !== undefined) payload.severity = patch.severity;
     if (patch.saveSnapshot !== undefined) payload.save_snapshot = patch.saveSnapshot;
     if (patch.soundNotification !== undefined) payload.sound_notification = patch.soundNotification;
+    if (patch.personConfidenceThreshold !== undefined)
+      payload.person_confidence_threshold = patch.personConfidenceThreshold;
+    if (patch.associationConfidenceThreshold !== undefined)
+      payload.association_confidence_threshold = patch.associationConfidenceThreshold;
+    if (patch.minMatchingFrames !== undefined) payload.min_matching_frames = patch.minMatchingFrames;
+    if (patch.requirePersonAssociation !== undefined)
+      payload.require_person_association = patch.requirePersonAssociation;
     if (Object.keys(payload).length === 0) return;
     const { error } = await supabase.from("ai_rules").update(payload).eq("id", id);
+    fail(error);
+  },
+  /** Persists rule→camera assignment through the existing join table. */
+  setCameras: async (ruleId: string, cameraIds: string[]): Promise<void> => {
+    const remove = await supabase.from("ai_rule_cameras").delete().eq("rule_id", ruleId);
+    fail(remove.error);
+    if (cameraIds.length === 0) return;
+    const { error } = await supabase
+      .from("ai_rule_cameras")
+      .insert(cameraIds.map((cameraId) => ({ rule_id: ruleId, camera_id: cameraId })));
     fail(error);
   },
 };
