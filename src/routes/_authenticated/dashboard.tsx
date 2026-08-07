@@ -115,7 +115,7 @@ function DashboardPage() {
                     <div className="flex items-center gap-2">
                       <SeverityBadge severity={event.severity} />
                       <span className="truncate text-[13px] text-foreground">
-                        {eventTypeLabel[event.type]}
+                        {eventTypeLabel(event.type)}
                       </span>
                     </div>
                     <p className="mt-0.5 truncate text-[11px] text-muted-foreground">

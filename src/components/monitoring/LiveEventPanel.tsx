@@ -13,7 +13,7 @@ function LiveEventCard({ event }: { event: DetectionEvent }) {
       <div className="relative grid aspect-[4/3] place-items-center overflow-hidden border border-border bg-background hud-grid"><ImageIcon className="size-4 text-muted-foreground" /><span className="absolute left-1 top-1 border border-warning/40 bg-background/80 px-0.5 font-mono text-[7px] text-warning">DEMO</span></div>
       <div className="min-w-0">
         <div className="flex items-start justify-between gap-2"><span className={cn("font-mono text-[8px] font-bold uppercase", event.severity === "critical" ? "text-destructive" : event.severity === "warning" ? "text-warning" : "text-info")}>{event.severity}</span><span className="font-mono text-[8px] text-muted-foreground">{formatRelative(event.detectedAt)}</span></div>
-        <h3 className="mt-0.5 truncate text-[11px] font-semibold text-foreground">{eventTypeLabel[event.type]}</h3>
+        <h3 className="mt-0.5 truncate text-[11px] font-semibold text-foreground">{eventTypeLabel(event.type)}</h3>
         <p className="truncate text-[9px] text-muted-foreground">{event.note ?? "AI Detection · Review required"}</p>
         <p className="mt-1 truncate font-mono text-[8px] text-muted-foreground">{event.cameraName}{person ? ` · PERSON ${person}` : ""}</p>
         <div className="mt-1.5 flex items-center justify-between gap-2"><span className="font-mono text-[9px] text-primary">{Math.round(event.confidence * 100)}% CONF.</span><StatusBadge status={event.status} /></div>

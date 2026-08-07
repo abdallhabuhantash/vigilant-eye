@@ -52,7 +52,7 @@ function EventsPage() {
       (events.data ?? []).filter((event) => {
         const matchesQuery =
           query.trim() === "" ||
-          `${event.cameraName} ${eventTypeLabel[event.type]} ${event.id}`
+          `${event.cameraName} ${eventTypeLabel(event.type)} ${event.id}`
             .toLowerCase()
             .includes(query.toLowerCase());
         const matchesSeverity = severity === "all" || event.severity === severity;
@@ -143,7 +143,7 @@ function EventsPage() {
                   <td className="px-3 py-2 font-mono text-[11px] tabular-nums text-muted-foreground">
                     {formatTimestamp(event.detectedAt)}
                   </td>
-                  <td className="px-3 py-2 text-foreground">{eventTypeLabel[event.type]}</td>
+                  <td className="px-3 py-2 text-foreground">{eventTypeLabel(event.type)}</td>
                   <td className="px-3 py-2 text-muted-foreground">{event.cameraName}</td>
                   <td className="px-3 py-2">
                     <ConfidenceMeter value={event.confidence} />
