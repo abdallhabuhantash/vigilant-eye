@@ -30,15 +30,8 @@ function ReportsPage() {
       <TopBar title="Reports & Analytics" subtitle="Aggregated detection statistics" />
       <PageContainer>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatTile
-            label="Events in range"
-            value={(report.data?.timeline ?? []).reduce((sum, point) => sum + point.events, 0)}
-          />
-          <StatTile
-            label="Confirmed"
-            value={(report.data?.timeline ?? []).reduce((sum, point) => sum + point.confirmed, 0)}
-            tone="success"
-          />
+          <StatTile label="Events in range" value={report.data?.totalEvents ?? 0} />
+          <StatTile label="Confirmed" value={report.data?.confirmed ?? 0} tone="success" />
           <StatTile
             label="Confirmation rate"
             value={`${Math.round((report.data?.confirmationRate ?? 0) * 100)}%`}
@@ -46,7 +39,12 @@ function ReportsPage() {
           />
           <StatTile
             label="Avg review time"
-            value={`${report.data?.averageReviewMinutes ?? 0}m`}
+            value={
+              report.data?.averageReviewMinutes === null ||
+              report.data?.averageReviewMinutes === undefined
+                ? "—"
+                : `${report.data.averageReviewMinutes.toFixed(1)}m`
+            }
             tone="warning"
           />
         </div>
