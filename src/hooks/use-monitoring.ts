@@ -127,18 +127,6 @@ export function useSetRuleCameras() {
   });
 }
 
-function useToggleCameraFlagLegacy() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    // Recording state is reported by the NVR / AI service, never set from the browser.
-    mutationFn: (input: { id: string; field: "aiEnabled"; value: boolean }) =>
-      camerasService.toggleAi(input.id, input.value),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["cameras"] });
-    },
-  });
-}
-
 export function useUpdateSettings() {
   const queryClient = useQueryClient();
   return useMutation({
