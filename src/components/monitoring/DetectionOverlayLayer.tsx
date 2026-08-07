@@ -19,13 +19,41 @@ export function BoundingBox({ detection }: { detection: DetectionOverlay }) {
   );
 }
 
+const center = (detection: DetectionOverlay) => ({
+  x: detection.x + detection.width / 2,
+  y: detection.y + detection.height / 2,
+});
+
 export function DetectionOverlayLayer({ detections, visible }: { detections: DetectionOverlay[]; visible: boolean }) {
   if (!visible) return null;
+  // Association connectors are derived from the detection geometry, never hard-coded.
+  const links = detections
+    .filter((detection) => detection.associatedPersonId)
+    .map((detection) => {
+      const person = detections.find((item) => item.objectId === detection.associatedPersonId);
+      if (!person) return null;
+      const from = center(detection);
+      const to = center(person);
+      return { id: `${detection.objectId}-${person.objectId}`, from, to, uncertain: detection.alertState === "uncertain" };
+    })
+    .filter((link): link is NonNullable<typeof link> => link !== null);
   return (
     <div className="pointer-events-none absolute inset-0 z-20">
       {detections.map((detection) => <BoundingBox key={detection.objectId} detection={detection} />)}
       <svg className="absolute inset-0 size-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
-        <path d="M 53 71 C 57 67, 60 62, 62 55" fill="none" stroke="currentColor" strokeWidth="0.2" strokeDasharray="1 1" className="text-destructive/80" />
+        {links.map((link) => (
+          <line
+            key={link.id}
+            x1={link.from.x}
+            y1={link.from.y}
+            x2={link.to.x}
+            y2={link.to.y}
+            stroke="currentColor"
+            strokeWidth="0.25"
+            strokeDasharray="1 1"
+            className={link.uncertain ? "text-warning/80" : "text-destructive/80"}
+          />
+        ))}
       </svg>
     </div>
   );
