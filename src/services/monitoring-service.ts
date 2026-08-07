@@ -6,7 +6,12 @@
 import { supabase } from "@/integrations/supabase/client";
 import { AI_HEARTBEAT_STALE_MS, NVR_HEARTBEAT_STALE_MS, isFresh } from "@/lib/health";
 import { effectiveSeverity } from "@/lib/event-presentation";
-import { addDays, startOfZonedDay, zonedWeekdayLabel } from "@/lib/time-zone";
+import {
+  addDays,
+  startOfZonedDay,
+  zonedShortDateLabel,
+  zonedWeekdayLabel,
+} from "@/lib/time-zone";
 import type { Json, Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import type {
   AiRule,
@@ -459,11 +464,12 @@ export function averageReviewMinutes(events: DetectionEvent[]): number | null {
 export const reportsService = {
   /** Every report metric is scoped to one operation mode; demo and live never mix. */
   summary: async (range: "7d" | "30d", mode: OperationMode): Promise<ReportSummary> => {
-    const buckets = range === "7d" ? 7 : 4;
-    const bucketDays = range === "7d" ? 1 : 7;
-    // Buckets align to Asia/Amman calendar days, ending with today.
+    // Exact calendar-day coverage: 7d = 7 days, 30d = 30 days, both ending today.
+    const totalDays = range === "7d" ? 7 : 30;
+    const bucketDays = range === "7d" ? 1 : 6; // 7×1 or 5×6 — always exactly totalDays.
+    const buckets = totalDays / bucketDays;
     const todayStart = startOfZonedDay();
-    const rangeStart = startOfZonedDay(addDays(todayStart, -(buckets - 1) * bucketDays));
+    const rangeStart = startOfZonedDay(addDays(todayStart, -(totalDays - 1)));
     const rangeEnd = startOfZonedDay(addDays(todayStart, 1));
 
     const { data, error } = await supabase
@@ -488,7 +494,10 @@ export const reportsService = {
         return at >= from.getTime() && at < to.getTime();
       });
       return {
-        label: range === "7d" ? zonedWeekdayLabel(from) : `W${index + 1}`,
+        label:
+          range === "7d"
+            ? zonedWeekdayLabel(from)
+            : `${zonedShortDateLabel(from)}${index === buckets - 1 ? "" : ""}`,
         events: inBucket.length,
         confirmed: inBucket.filter((event) => event.status === "confirmed").length,
       };
