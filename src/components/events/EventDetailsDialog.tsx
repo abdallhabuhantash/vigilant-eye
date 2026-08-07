@@ -85,7 +85,7 @@ export function EventDetailsDialog({
   event: DetectionEvent | null;
   pending: boolean;
   onOpenChange: (open: boolean) => void;
-  onReview: (input: { id: string; status: EventStatus; note?: string }) => void;
+  onReview: (input: { id: string; status: EventStatus; note?: string | undefined }) => void;
 }) {
   const [note, setNote] = useState("");
   const [showOverlay, setShowOverlay] = useState(true);
