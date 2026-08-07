@@ -55,13 +55,13 @@ def test_phone_on_single_person_is_associated():
     assert result.person_tracking_id == "01"
 
 
-def test_phone_between_two_people_is_uncertain_not_definitive():
+def test_phone_between_two_overlapping_people_is_uncertain_not_definitive():
+    # Both persons plausibly own the phone: the engine must refuse to pick one.
     result = associate(
-        phone(0.5), (person("01", 0.44), person("02", 0.56)), association_threshold=0.65
+        phone(0.5), (person("01", 0.40), person("02", 0.46)), association_threshold=0.65
     )
-    assert result.status is not AssociationStatus.ASSOCIATED
-    if result.status is AssociationStatus.UNCERTAIN:
-        assert result.person_tracking_id is None
+    assert result.status is AssociationStatus.UNCERTAIN
+    assert result.person_tracking_id is None
 
 
 def test_phone_with_no_person_is_unassociated():
