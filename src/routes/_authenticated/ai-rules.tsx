@@ -1,3 +1,4 @@
+import { requireAdministrator } from "@/lib/require-admin";
 import { createFileRoute } from "@tanstack/react-router";
 import { Lock } from "lucide-react";
 import { SeverityBadge } from "@/components/common/EventBadges";
@@ -9,9 +10,10 @@ import { Switch } from "@/components/ui/switch";
 import { useAiRules, useCameras, useUpdateRule } from "@/hooks/use-monitoring";
 
 export const Route = createFileRoute("/_authenticated/ai-rules")({
+  beforeLoad: requireAdministrator,
   head: () => ({
     meta: [
-      { title: "AI Detection Rules — Sentinel AI Exam Monitoring" },
+      { title: "AI Detection Rules — Vigilant Eye AI Smart Surveillance" },
       {
         name: "description",
         content:

@@ -5,11 +5,13 @@ import { TopBar } from "@/components/layout/TopBar";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useSystemSettings, useUpdateSettings } from "@/hooks/use-monitoring";
+import { requireAdministrator } from "@/lib/require-admin";
 
 export const Route = createFileRoute("/_authenticated/settings")({
+  beforeLoad: requireAdministrator,
   head: () => ({
     meta: [
-      { title: "System Settings — Sentinel AI Exam Monitoring" },
+      { title: "System Settings — Vigilant Eye AI Smart Surveillance" },
       {
         name: "description",
         content: "AI service endpoints, retention policy and alerting preferences.",
@@ -28,6 +30,30 @@ function SettingsPage() {
       <TopBar title="System Settings" subtitle="Administrator access" />
       <PageContainer>
         <div className="grid gap-3 lg:grid-cols-2">
+          <Panel
+            title="Operation mode"
+            subtitle="Controls whether the console may display demonstration data."
+            bodyClassName="space-y-3 p-3 lg:col-span-2"
+          >
+            <div className="flex items-center justify-between rounded-[4px] border border-border/70 bg-surface-2/50 px-2.5 py-2">
+              <div>
+                <span className="label-tech text-muted-foreground">Live mode</span>
+                <p className="text-[11px] text-muted-foreground">
+                  Live mode hides all demonstration cameras, placeholder services and sample events.
+                  Only real hardware reporting a recent heartbeat is shown.
+                </p>
+              </div>
+              <Switch
+                checked={data?.operationMode === "live"}
+                onCheckedChange={(value) =>
+                  update.mutate({ operationMode: value ? "live" : "demo" })
+                }
+              />
+            </div>
+            <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-primary">
+              current mode: {data?.operationMode ?? "—"}
+            </p>
+          </Panel>
           <Panel
             title="Integration endpoints"
             subtitle="Point the prototype at the Python AI service or a future cloud backend."

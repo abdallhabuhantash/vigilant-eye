@@ -13,16 +13,16 @@ export const Route = createFileRoute("/login")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Sign in — Sentinel AI Exam Monitoring" },
+      { title: "Sign in — Vigilant Eye AI Smart Surveillance" },
       {
         name: "description",
         content:
-          "Secure operator sign-in for the Sentinel AI-powered IP camera exam monitoring console.",
+          "Secure operator sign-in for the Vigilant Eye AI-powered IP camera surveillance console.",
       },
-      { property: "og:title", content: "Sign in — Sentinel AI Exam Monitoring" },
+      { property: "og:title", content: "Sign in — Vigilant Eye AI Smart Surveillance" },
       {
         property: "og:description",
-        content: "Secure operator sign-in for the Sentinel exam monitoring console.",
+        content: "Secure operator sign-in for the Vigilant Eye AI surveillance console.",
       },
     ],
   }),
@@ -77,8 +77,8 @@ function LoginPage() {
             <ScanEye className="size-5" />
           </div>
           <div className="leading-tight">
-            <p className="font-mono text-base tracking-[0.16em] text-foreground">SENTINEL</p>
-            <p className="label-tech">AI Exam Monitoring Console</p>
+            <p className="font-mono text-base tracking-[0.16em] text-foreground">VIGILANT EYE</p>
+            <p className="label-tech">AI Smart Surveillance Console</p>
           </div>
         </div>
 

@@ -7,11 +7,14 @@ import { TopBar } from "@/components/layout/TopBar";
 import { Switch } from "@/components/ui/switch";
 import { useCameraSummary, useCameras, useToggleCameraFlag } from "@/hooks/use-monitoring";
 import { formatRelative } from "@/lib/format";
+import { effectiveCameraStatus, isCameraStale } from "@/lib/health";
+import { requireAdministrator } from "@/lib/require-admin";
 
 export const Route = createFileRoute("/_authenticated/cameras")({
+  beforeLoad: requireAdministrator,
   head: () => ({
     meta: [
-      { title: "Cameras — Sentinel AI Exam Monitoring" },
+      { title: "Cameras — Vigilant Eye AI Smart Surveillance" },
       {
         name: "description",
         content: "Configure IP cameras, AI analysis and recording per channel across the fleet.",
@@ -55,22 +58,24 @@ function CamerasPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
-              {(cameras.data ?? []).map((camera) => (
+              {(cameras.data ?? []).map((camera) => {
+                const status = effectiveCameraStatus(camera);
+                return (
                 <tr key={camera.id} className="hover:bg-surface-2/60">
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-2">
                       <StatusDot
                         tone={
-                          camera.status === "online"
+                          status === "online"
                             ? "online"
-                            : camera.status === "degraded"
+                            : status === "degraded"
                               ? "degraded"
                               : "offline"
                         }
-                        pulse={camera.status === "online"}
+                        pulse={status === "online"}
                       />
                       <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-                        {camera.status}
+                        {isCameraStale(camera) ? "offline · no heartbeat" : status}
                       </span>
                     </div>
                   </td>
@@ -101,15 +106,13 @@ function CamerasPage() {
                     />
                   </td>
                   <td className="px-3 py-2">
-                    <Switch
-                      checked={camera.recording}
-                      onCheckedChange={(value) =>
-                        toggle.mutate({ id: camera.id, field: "recording", value })
-                      }
-                    />
+                    <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+                      {camera.recording ? "reported" : "not reporting"}
+                    </span>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </Panel>

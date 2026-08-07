@@ -25,7 +25,7 @@ import { formatRelative } from "@/lib/format";
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
-      { title: "Dashboard — Sentinel AI Exam Monitoring" },
+      { title: "Dashboard — Vigilant Eye AI Smart Surveillance" },
       {
         name: "description",
         content: "Live camera fleet, AI service health and recent suspicious activity events.",

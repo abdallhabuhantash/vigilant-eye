@@ -1,3 +1,4 @@
+import { useAuth } from "@/hooks/use-auth";
 import { Link } from "@tanstack/react-router";
 import {
   Activity,
@@ -67,6 +68,7 @@ function NavSection({ items, title }: { items: NavItem[]; title: string }) {
 }
 
 export function AppSidebar() {
+  const { isAdministrator } = useAuth();
   return (
     <aside className="flex w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
       <div className="flex items-center gap-2 border-b border-sidebar-border px-3 py-3">
@@ -74,13 +76,13 @@ export function AppSidebar() {
           <ScanEye className="size-4" />
         </div>
         <div className="leading-tight">
-          <p className="font-mono text-[13px] tracking-[0.14em] text-foreground">SENTINEL</p>
-          <p className="label-tech">AI Exam Monitor</p>
+          <p className="font-mono text-[13px] tracking-[0.14em] text-foreground">VIGILANT EYE</p>
+          <p className="label-tech">AI Smart Surveillance</p>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto divide-y divide-sidebar-border/60">
         <NavSection title="Operations" items={primaryNav} />
-        <NavSection title="Administration" items={secondaryNav} />
+        {isAdministrator && <NavSection title="Administration" items={secondaryNav} />}
       </div>
       <div className="border-t border-sidebar-border px-3 py-2">
         <p className="label-tech">Build</p>

@@ -10,7 +10,7 @@ import { formatRelative } from "@/lib/format";
 export const Route = createFileRoute("/_authenticated/profile")({
   head: () => ({
     meta: [
-      { title: "Profile — Sentinel AI Exam Monitoring" },
+      { title: "Profile — Vigilant Eye AI Smart Surveillance" },
       { name: "description", content: "Signed-in operator account details and session controls." },
     ],
   }),
