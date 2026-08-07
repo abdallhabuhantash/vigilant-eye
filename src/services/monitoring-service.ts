@@ -5,6 +5,7 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { AI_HEARTBEAT_STALE_MS, NVR_HEARTBEAT_STALE_MS, isFresh } from "@/lib/health";
+import type { Json, Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import type {
   AiRule,
   AiServiceStatus,
@@ -20,15 +21,25 @@ import type {
   SystemSettings,
 } from "@/types";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// Rows come back from the Data API untyped for these hand-written mappers.
-type Row = any;
+// Row shapes come from the generated backend types; mappers translate them
+// into the UI-facing domain types declared in `@/types`.
+type CameraRow = Tables<"cameras">;
+type EventRow = Tables<"events">;
+type RuleRow = Tables<"ai_rules">;
+type ProfileRow = Tables<"profiles">;
+type ServiceHealthRow = Tables<"service_health">;
+
+/** Narrows a jsonb column to a readable key/value bag. */
+const jsonRecord = (value: Json | null | undefined): Record<string, Json | undefined> =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, Json | undefined>)
+    : {};
 
 const fail = (error: { message: string } | null): void => {
   if (error) throw new Error(error.message);
 };
 
-const toCamera = (row: Row): Camera => ({
+const toCamera = (row: CameraRow): Camera => ({
   id: row.id as string,
   name: row.name as string,
   location: row.location as string,
@@ -43,7 +54,7 @@ const toCamera = (row: Row): Camera => ({
   lastHeartbeatAt: row.last_heartbeat_at as string,
 });
 
-const toEvent = (row: Row): DetectionEvent => ({
+const toEvent = (row: EventRow): DetectionEvent => ({
   id: row.id as string,
   type: row.type as DetectionEvent["type"],
   severity: row.severity as DetectionEvent["severity"],
@@ -59,7 +70,7 @@ const toEvent = (row: Row): DetectionEvent => ({
   note: (row.note as string) ?? null,
 });
 
-const toRule = (row: Row, cameraIds: string[]): AiRule => ({
+const toRule = (row: RuleRow, cameraIds: string[]): AiRule => ({
   id: row.id as string,
   name: row.name as string,
   description: row.description as string,
@@ -161,8 +172,8 @@ export const eventsService = {
     const { error } = await supabase.rpc("review_event", {
       _event_id: id,
       _status: status,
-      _note: note ?? null,
-    } as never);
+      ...(note === undefined ? {} : { _note: note }),
+    });
     fail(error);
   },
   snapshotUrl: async (path: string | null): Promise<string | null> => {
@@ -190,7 +201,7 @@ export const rulesService = {
     );
   },
   update: async (id: string, patch: Partial<AiRule>): Promise<void> => {
-    const payload: Row = {};
+    const payload: TablesUpdate<"ai_rules"> = {};
     if (patch.enabled !== undefined) payload.enabled = patch.enabled;
     if (patch.confidenceThreshold !== undefined)
       payload.confidence_threshold = patch.confidenceThreshold;
@@ -199,15 +210,14 @@ export const rulesService = {
     if (patch.cooldownSeconds !== undefined) payload.cooldown_seconds = patch.cooldownSeconds;
     if (patch.severity !== undefined) payload.severity = patch.severity;
     if (patch.saveSnapshot !== undefined) payload.save_snapshot = patch.saveSnapshot;
-    if (patch.soundNotification !== undefined)
-      payload.sound_notification = patch.soundNotification;
+    if (patch.soundNotification !== undefined) payload.sound_notification = patch.soundNotification;
     if (Object.keys(payload).length === 0) return;
-    const { error } = await supabase.from("ai_rules").update(payload as never).eq("id", id);
+    const { error } = await supabase.from("ai_rules").update(payload).eq("id", id);
     fail(error);
   },
 };
 
-const toUser = (row: Row, role: string | undefined): AppUser => ({
+const toUser = (row: ProfileRow, role: string | undefined): AppUser => ({
   id: row.id as string,
   fullName: (row.full_name as string) || (row.email as string),
   email: row.email as string,
@@ -244,7 +254,7 @@ export const usersService = {
 export const systemService = {
   operationMode: async (): Promise<OperationMode> => {
     const { data } = await supabase.from("system_settings").select("*").maybeSingle();
-    return ((data as Row)?.operation_mode as OperationMode) ?? "demo";
+    return (data?.operation_mode as OperationMode) ?? "demo";
   },
   aiStatus: async (mode: OperationMode): Promise<AiServiceStatus> => {
     const { data } = await supabase
@@ -252,23 +262,23 @@ export const systemService = {
       .select("*")
       .eq("service", "ai")
       .maybeSingle();
-    const row: Row = data;
+    const row: ServiceHealthRow | null = data;
     const isDemo = Boolean(row?.is_demo);
     // In live mode a demo placeholder is not a connected service.
     const usable = row && (mode === "demo" || !isDemo);
-    const payload: Row = usable ? (row.payload ?? {}) : {};
+    const payload = usable ? jsonRecord(row.payload) : {};
     const lastPingAt = (row?.updated_at as string) ?? null;
     const stale = usable ? !isFresh(lastPingAt, AI_HEARTBEAT_STALE_MS) : true;
     return {
       // A stored `online` flag is only believed while the heartbeat is fresh.
       online: Boolean(usable && row.online) && !stale,
-      version: (payload.version as string) ?? "—",
-      model: (payload.model as string) ?? "—",
-      device: (payload.device as string) ?? "—",
-      inferenceFps: Number(payload.inference_fps ?? 0),
-      queueDepth: Number(payload.queue_depth ?? 0),
-      gpuLoadPercent: Number(payload.gpu_load_percent ?? 0),
-      uptimeSeconds: Number(payload.uptime_seconds ?? 0),
+      version: (payload["version"] as string) ?? "—",
+      model: (payload["model"] as string) ?? "—",
+      device: (payload["device"] as string) ?? "—",
+      inferenceFps: Number(payload["inference_fps"] ?? 0),
+      queueDepth: Number(payload["queue_depth"] ?? 0),
+      gpuLoadPercent: Number(payload["gpu_load_percent"] ?? 0),
+      uptimeSeconds: Number(payload["uptime_seconds"] ?? 0),
       lastPingAt: lastPingAt ?? "",
       stale,
       isDemo: Boolean(usable && isDemo),
@@ -281,19 +291,19 @@ export const systemService = {
       .select("*")
       .eq("service", "nvr")
       .maybeSingle();
-    const row: Row = data;
+    const row: ServiceHealthRow | null = data;
     const isDemo = Boolean(row?.is_demo);
     const usable = row && (mode === "demo" || !isDemo);
-    const payload: Row = usable ? (row.payload ?? {}) : {};
+    const payload = usable ? jsonRecord(row.payload) : {};
     const lastSyncAt = (row?.updated_at as string) ?? null;
     const stale = usable ? !isFresh(lastSyncAt, NVR_HEARTBEAT_STALE_MS) : true;
     return {
       online: Boolean(usable && row.online) && !stale,
-      model: (payload.model as string) ?? "—",
-      channelsUsed: Number(payload.channels_used ?? 0),
-      channelsTotal: Number(payload.channels_total ?? 0),
-      storageUsedPercent: Number(payload.storage_used_percent ?? 0),
-      retentionDays: Number(payload.retention_days ?? 0),
+      model: (payload["model"] as string) ?? "—",
+      channelsUsed: Number(payload["channels_used"] ?? 0),
+      channelsTotal: Number(payload["channels_total"] ?? 0),
+      storageUsedPercent: Number(payload["storage_used_percent"] ?? 0),
+      retentionDays: Number(payload["retention_days"] ?? 0),
       lastSyncAt: lastSyncAt ?? "",
       stale,
       isDemo: Boolean(usable && isDemo),
@@ -303,7 +313,7 @@ export const systemService = {
   settings: async (): Promise<SystemSettings> => {
     const { data } = await supabase.from("system_settings").select("*").maybeSingle();
     return {
-      operationMode: ((data as Row)?.operation_mode as OperationMode) ?? "demo",
+      operationMode: (data?.operation_mode as OperationMode) ?? "demo",
       aiServiceUrl: (data?.ai_service_url as string) ?? "",
       websocketUrl: (data?.websocket_url as string) ?? "",
       retentionDays: Number(data?.retention_days ?? 30),
@@ -314,17 +324,20 @@ export const systemService = {
     };
   },
   updateSettings: async (patch: Partial<SystemSettings>): Promise<void> => {
-    const payload: Row = { id: true, updated_at: new Date().toISOString() };
+    const payload: TablesInsert<"system_settings"> = {
+      id: true,
+      updated_at: new Date().toISOString(),
+    };
     if (patch.operationMode !== undefined) payload.operation_mode = patch.operationMode;
     if (patch.aiServiceUrl !== undefined) payload.ai_service_url = patch.aiServiceUrl;
     if (patch.websocketUrl !== undefined) payload.websocket_url = patch.websocketUrl;
-    if (patch.retentionDays !== undefined) payload.retention_days = patch.retentionDays;
+    if (patch.retentionDays !== undefined) payload["retention_days"] = patch.retentionDays;
     if (patch.snapshotStorage !== undefined) payload.snapshot_storage = patch.snapshotStorage;
     if (patch.soundAlerts !== undefined) payload.sound_alerts = patch.soundAlerts;
     if (patch.autoAcknowledgeMinutes !== undefined)
       payload.auto_acknowledge_minutes = patch.autoAcknowledgeMinutes;
     if (patch.timezone !== undefined) payload.timezone = patch.timezone;
-    const { error } = await supabase.from("system_settings").upsert(payload as never);
+    const { error } = await supabase.from("system_settings").upsert(payload);
     fail(error);
   },
 };
