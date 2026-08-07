@@ -488,7 +488,7 @@ export const reportsService = {
       return { from, to };
     });
 
-    const timeline = bucketBounds.map(({ from, to }, index) => {
+    const timeline = bucketBounds.map(({ from, to }) => {
       const inBucket = events.filter((event) => {
         const at = new Date(event.detectedAt).getTime();
         return at >= from.getTime() && at < to.getTime();
