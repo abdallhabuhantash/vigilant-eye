@@ -28,7 +28,10 @@ BOUNDARY = "frame"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
-    configure_logging(settings.log_level)
+    configure_logging(
+        settings.log_level,
+        secrets=[settings.supabase_service_role_key, settings.telegram_bot_token, settings.ai_service_key],
+    )
     orchestrator = Orchestrator(settings)
     app.state.orchestrator = orchestrator
     await asyncio.to_thread(orchestrator.start)
