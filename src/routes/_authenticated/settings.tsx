@@ -182,7 +182,7 @@ function SettingsPage() {
                 Operational reporting timezone
               </span>
               <div className="flex h-8 items-center rounded-[4px] border border-border/70 bg-surface-2/50 px-2.5 font-mono text-xs text-foreground">
-                {data?.timezone ?? "Asia/Amman"}
+                Asia/Amman
               </div>
               <span className="block text-[10px] text-muted-foreground">
                 Fixed for this build. All day boundaries and reports are calculated in this
