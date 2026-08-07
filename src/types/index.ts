@@ -197,7 +197,15 @@ export interface NvrStatus {
   stale: boolean;
   isDemo: boolean;
   neverReported: boolean;
+  /**
+   * Evidence-based recording state reported by the NVR/service heartbeat.
+   * null = never reported. The UI must not claim recording when unknown.
+   */
+  recordingActive: boolean | null;
 }
+
+/** Predictable overall posture derived from independent component health. */
+export type SystemHealthState = "ready" | "degraded" | "not_ready";
 
 export interface CameraFleetSummary {
   total: number;
