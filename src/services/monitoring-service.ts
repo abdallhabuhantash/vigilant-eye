@@ -172,7 +172,7 @@ export const eventsService = {
     const { error } = await supabase.rpc("review_event", {
       _event_id: id,
       _status: status,
-      _note: note ?? null,
+      ...(note === undefined ? {} : { _note: note }),
     });
     fail(error);
   },
