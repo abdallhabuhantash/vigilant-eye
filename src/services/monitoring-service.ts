@@ -494,10 +494,7 @@ export const reportsService = {
         return at >= from.getTime() && at < to.getTime();
       });
       return {
-        label:
-          range === "7d"
-            ? zonedWeekdayLabel(from)
-            : `${zonedShortDateLabel(from)}${index === buckets - 1 ? "" : ""}`,
+        label: range === "7d" ? zonedWeekdayLabel(from) : zonedShortDateLabel(from),
         events: inBucket.length,
         confirmed: inBucket.filter((event) => event.status === "confirmed").length,
       };
