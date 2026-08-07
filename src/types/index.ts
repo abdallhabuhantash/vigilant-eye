@@ -186,6 +186,12 @@ export interface AiServiceStatus {
   neverReported: boolean;
 }
 
+/** Notification provider readiness reported by the local AI service heartbeat. */
+export interface NotificationChannelReadiness {
+  configured: boolean;
+  ready: boolean;
+}
+
 export interface NvrStatus {
   online: boolean;
   model: string;
