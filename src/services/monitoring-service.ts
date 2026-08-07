@@ -210,8 +210,7 @@ export const rulesService = {
     if (patch.cooldownSeconds !== undefined) payload.cooldown_seconds = patch.cooldownSeconds;
     if (patch.severity !== undefined) payload.severity = patch.severity;
     if (patch.saveSnapshot !== undefined) payload.save_snapshot = patch.saveSnapshot;
-    if (patch.soundNotification !== undefined)
-      payload.sound_notification = patch.soundNotification;
+    if (patch.soundNotification !== undefined) payload.sound_notification = patch.soundNotification;
     if (Object.keys(payload).length === 0) return;
     const { error } = await supabase.from("ai_rules").update(payload).eq("id", id);
     fail(error);
