@@ -157,6 +157,9 @@ const toCameraRowPatch = (input: CameraConfigInput): TablesUpdate<"cameras"> => 
   name: input.name,
   location: input.location,
   source_type: input.sourceType,
+  // `is_demo` is always derived from the source type so demo/live filtering
+  // can never drift out of sync after an edit.
+  is_demo: input.sourceType === "demo",
   host: input.host,
   rtsp_port: input.rtspPort,
   channel: input.channel,
