@@ -1,22 +1,30 @@
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, Filter, Image as ImageIcon } from "lucide-react";
-import { StatusBadge, eventTypeLabel } from "@/components/common/EventBadges";
+import { AssociationBadge, StatusBadge } from "@/components/common/EventBadges";
 import { Button } from "@/components/ui/button";
+import {
+  displayPersonId,
+  eventSubtitle,
+  eventTitle,
+  formatSeconds,
+} from "@/lib/event-presentation";
 import { formatRelative } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { DetectionEvent } from "@/types";
 
 function LiveEventCard({ event }: { event: DetectionEvent }) {
-  const person = event.note?.match(/Person ID\s*(\d+)/)?.[1];
+  // Structured fields only — never parsed out of the reviewer note.
+  const person = displayPersonId(event);
+  const subtitle = eventSubtitle(event);
   return (
     <article className={cn("grid grid-cols-[64px_minmax(0,1fr)] gap-2 border-b border-border/70 p-3 transition-colors hover:bg-accent/30", event.severity === "critical" && "border-l-2 border-l-destructive bg-destructive/5", event.severity === "warning" && "border-l-2 border-l-warning")}>
-      <div className="relative grid aspect-[4/3] place-items-center overflow-hidden border border-border bg-background hud-grid"><ImageIcon className="size-4 text-muted-foreground" /><span className="absolute left-1 top-1 border border-warning/40 bg-background/80 px-0.5 font-mono text-[7px] text-warning">DEMO</span></div>
+      <div className="relative grid aspect-[4/3] place-items-center overflow-hidden border border-border bg-background hud-grid"><ImageIcon className="size-4 text-muted-foreground" />{event.sourceMode === "demo" && <span className="absolute left-1 top-1 border border-warning/40 bg-background/80 px-0.5 font-mono text-[7px] text-warning">DEMO</span>}</div>
       <div className="min-w-0">
         <div className="flex items-start justify-between gap-2"><span className={cn("font-mono text-[8px] font-bold uppercase", event.severity === "critical" ? "text-destructive" : event.severity === "warning" ? "text-warning" : "text-info")}>{event.severity}</span><span className="font-mono text-[8px] text-muted-foreground">{formatRelative(event.detectedAt)}</span></div>
-        <h3 className="mt-0.5 truncate text-[11px] font-semibold text-foreground">{eventTypeLabel(event.type)}</h3>
-        <p className="truncate text-[9px] text-muted-foreground">{event.note ?? "AI Detection · Review required"}</p>
-        <p className="mt-1 truncate font-mono text-[8px] text-muted-foreground">{event.cameraName}{person ? ` · PERSON ${person}` : ""}</p>
-        <div className="mt-1.5 flex items-center justify-between gap-2"><span className="font-mono text-[9px] text-primary">{Math.round(event.confidence * 100)}% CONF.</span><StatusBadge status={event.status} /></div>
+        <h3 className="mt-0.5 truncate text-[11px] font-semibold text-foreground">{eventTitle(event)}</h3>
+        <p className="truncate text-[9px] text-muted-foreground">{subtitle ?? "AI detection · Review required"}</p>
+        <p className="mt-1 truncate font-mono text-[8px] text-muted-foreground">{event.cameraName}{person ? ` · TRACK ${person}` : ""} · {formatSeconds(event.detectionDurationSeconds)}</p>
+        <div className="mt-1.5 flex items-center justify-between gap-2"><span className="font-mono text-[9px] text-primary">{Math.round((event.triggerConfidence ?? event.confidence) * 100)}% CONF.</span><div className="flex items-center gap-1"><AssociationBadge status={event.associationStatus} /><StatusBadge status={event.status} /></div></div>
       </div>
     </article>
   );
