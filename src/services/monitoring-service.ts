@@ -205,11 +205,35 @@ export const eventsService = {
     fail(error);
     return (data ?? []).map(toEvent);
   },
+  /**
+   * Events belonging to the current Asia/Amman calendar day, scoped to the
+   * active operation mode. Filtered at the database level.
+   */
+  today: async (mode?: OperationMode): Promise<DetectionEvent[]> => {
+    const dayStart = startOfZonedDay();
+    const dayEnd = startOfZonedDay(addDays(dayStart, 1) as Date);
+    let query = supabase
+      .from("events")
+      .select("*")
+      .gte("detected_at", dayStart.toISOString())
+      .lt("detected_at", dayEnd.toISOString());
+    if (mode) query = query.eq("source_mode", mode);
+    const { data, error } = await query.order("detected_at", { ascending: false });
+    fail(error);
+    return (data ?? []).map(toEvent);
+  },
+  /**
+   * "Today" counters use the Asia/Amman calendar day; critical uses the shared
+   * effective severity so uncertain associations are never counted as critical.
+   */
   summary: async (mode?: OperationMode): Promise<EventsSummary> => {
-    const events = await eventsService.list(mode);
+    const [today, events] = await Promise.all([
+      eventsService.today(mode),
+      eventsService.list(mode),
+    ]);
     return {
-      today: events.length,
-      critical: events.filter((e) => e.severity === "critical").length,
+      today: today.length,
+      critical: today.filter((e) => effectiveSeverity(e) === "critical").length,
       pendingReview: events.filter((e) => e.status === "new" || e.status === "under_review").length,
       confirmed: events.filter((e) => e.status === "confirmed").length,
       rejected: events.filter((e) => e.status === "rejected").length,
