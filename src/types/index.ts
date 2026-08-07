@@ -132,6 +132,12 @@ export interface AiRule {
   cameraIds: string[];
   saveSnapshot: boolean;
   soundNotification: boolean;
+  /** Minimum person-detection confidence before association is attempted. */
+  personConfidenceThreshold: number;
+  /** Minimum person↔trigger-object association confidence. */
+  associationConfidenceThreshold: number;
+  minMatchingFrames: number;
+  requirePersonAssociation: boolean;
 }
 
 export interface AiServiceStatus {
