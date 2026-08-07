@@ -14,6 +14,10 @@ export interface AppUser {
 
 export type CameraStatus = "online" | "offline" | "degraded";
 
+/** How the future AI service reaches the stream. Never vendor-specific. */
+export type CameraSourceType = "direct_camera" | "nvr_channel" | "demo";
+export type CameraStreamProfile = "main" | "sub" | "custom";
+
 export interface Camera {
   id: string;
   name: string;
@@ -21,6 +25,13 @@ export interface Camera {
   /** Host only. RTSP credentials are never exposed to the browser. */
   host: string;
   channel: number;
+  sourceType: CameraSourceType;
+  rtspPort: number;
+  /** Non-secret stream path, e.g. "/stream2". Never contains credentials. */
+  streamPath: string;
+  streamProfile: CameraStreamProfile;
+  /** false = archived. Archived cameras leave monitoring but keep history. */
+  active: boolean;
   status: CameraStatus;
   aiEnabled: boolean;
   recording: boolean;
@@ -28,6 +39,22 @@ export interface Camera {
   fps: number;
   isDemo: boolean;
   lastHeartbeatAt: string;
+  updatedAt: string;
+}
+
+/** Administrator-editable camera configuration. Runtime health is excluded. */
+export interface CameraConfigInput {
+  name: string;
+  location: string;
+  sourceType: CameraSourceType;
+  host: string;
+  rtspPort: number;
+  channel: number;
+  streamPath: string;
+  streamProfile: CameraStreamProfile;
+  resolution: string;
+  fps: number;
+  aiEnabled: boolean;
 }
 
 export type EventSeverity = "critical" | "warning" | "info";
@@ -80,7 +107,8 @@ export interface DetectionEvent {
   ruleId: string;
   confidence: number;
   durationSeconds: number;
-  snapshotUrl: string | null;
+  /** Storage path inside the private snapshots bucket — never a URL. */
+  snapshotPath: string | null;
   detectedAt: string;
   reviewedBy: string | null;
   /** When a human completed the review, if ever. */
