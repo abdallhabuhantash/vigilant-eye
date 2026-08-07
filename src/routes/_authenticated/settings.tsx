@@ -325,8 +325,17 @@ function HealthRow({ label, children }: { label: string; children: React.ReactNo
   );
 }
 
-/** Honest capability list. No provider is implemented and no token is collected. */
+/**
+ * Honest capability list. Telegram state mirrors what the local AI service
+ * reports in its heartbeat; no token or chat ID is ever exposed here.
+ */
 function NotificationReadiness({ soundAlerts }: { soundAlerts: boolean }) {
+  const ai = useAiServiceStatus();
+  const telegramState = ai.data?.telegramReady
+    ? "Ready"
+    : ai.data?.telegramConfigured
+      ? "Configured"
+      : "Not Configured";
   const channels: { name: string; state: string; available: boolean }[] = [
     { name: "In-app alerts", state: "Available", available: true },
     {
@@ -334,14 +343,18 @@ function NotificationReadiness({ soundAlerts }: { soundAlerts: boolean }) {
       state: soundAlerts ? "Available — Enabled" : "Available — Disabled",
       available: true,
     },
-    { name: "Telegram", state: "Not Configured", available: false },
+    {
+      name: "Telegram",
+      state: telegramState,
+      available: Boolean(ai.data?.telegramConfigured),
+    },
     { name: "WhatsApp", state: "Not Configured", available: false },
     { name: "SMS", state: "Not Configured", available: false },
   ];
   return (
     <Panel
       title="Notification readiness"
-      subtitle="Provider credentials will be handled server-side in a future phase."
+      subtitle="Provider credentials live only in the local AI service configuration."
       bodyClassName="space-y-1.5 p-3 lg:col-span-2"
     >
       {channels.map((channel) => (
