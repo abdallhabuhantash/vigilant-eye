@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { useEvents, useEventsSummary, useReviewEvent } from "@/hooks/use-monitoring";
 import { useRealtimeEvents } from "@/hooks/use-realtime-events";
-import { displayPersonId, formatSeconds } from "@/lib/event-presentation";
+import { displayPersonId, displaySeverity, formatSeconds } from "@/lib/event-presentation";
 import { formatTimestamp } from "@/lib/format";
 import type { EventSeverity, EventStatus } from "@/types";
 
