@@ -184,6 +184,9 @@ export interface AiServiceStatus {
   isDemo: boolean;
   /** No health record has ever been reported by a real service. */
   neverReported: boolean;
+  /** Provider readiness flags reported by the AI service. Never contains secrets. */
+  telegramConfigured: boolean;
+  telegramReady: boolean;
 }
 
 /** Notification provider readiness reported by the local AI service heartbeat. */
