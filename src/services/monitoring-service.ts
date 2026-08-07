@@ -4,7 +4,12 @@
  * by the external Python AI service using its service credentials.
  */
 import { supabase } from "@/integrations/supabase/client";
-import { AI_HEARTBEAT_STALE_MS, NVR_HEARTBEAT_STALE_MS, isFresh } from "@/lib/health";
+import {
+  AI_HEARTBEAT_STALE_MS,
+  NVR_HEARTBEAT_STALE_MS,
+  effectiveCameraStatus,
+  isFresh,
+} from "@/lib/health";
 import { effectiveSeverity } from "@/lib/event-presentation";
 import { addDays, startOfZonedDay, zonedShortDateLabel, zonedWeekdayLabel } from "@/lib/time-zone";
 import type { Json, Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
@@ -14,6 +19,7 @@ import type {
   AppUser,
   AssociationStatus,
   Camera,
+  CameraConfigInput,
   CameraFleetSummary,
   DetectionEvent,
   DetectionEvidence,
@@ -80,6 +86,11 @@ const toCamera = (row: CameraRow): Camera => ({
   location: row.location as string,
   host: row.host as string,
   channel: row.channel as number,
+  sourceType: (row.source_type as Camera["sourceType"]) ?? "direct_camera",
+  rtspPort: Number(row.rtsp_port ?? 554),
+  streamPath: (row.stream_path as string) ?? "",
+  streamProfile: (row.stream_profile as Camera["streamProfile"]) ?? "main",
+  active: row.active !== false,
   status: row.status as Camera["status"],
   aiEnabled: row.ai_enabled as boolean,
   recording: row.recording as boolean,
@@ -87,6 +98,7 @@ const toCamera = (row: CameraRow): Camera => ({
   fps: row.fps as number,
   isDemo: row.is_demo as boolean,
   lastHeartbeatAt: row.last_heartbeat_at as string,
+  updatedAt: (row.updated_at as string) ?? (row.created_at as string),
 });
 
 const toEvent = (row: EventRow): DetectionEvent => ({
@@ -99,7 +111,7 @@ const toEvent = (row: EventRow): DetectionEvent => ({
   ruleId: (row.rule_id as string) ?? "",
   confidence: Number(row.confidence ?? 0),
   durationSeconds: row.duration_seconds as number,
-  snapshotUrl: (row.snapshot_path as string) ?? null,
+  snapshotPath: (row.snapshot_path as string) ?? null,
   detectedAt: row.detected_at as string,
   reviewedBy: (row.reviewed_by as string) ?? null,
   reviewedAt: (row.reviewed_at as string) ?? null,
