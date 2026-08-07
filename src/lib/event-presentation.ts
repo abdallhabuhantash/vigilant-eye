@@ -1,4 +1,4 @@
-import type { AssociationStatus, DetectionEvent, EventType } from "@/types";
+import type { AssociationStatus, DetectionEvent, EventSeverity, EventType } from "@/types";
 
 const knownLabels: Record<string, string> = {
   suspicious_cheating_activity: "Suspicious Cheating Activity",
@@ -52,6 +52,17 @@ export function displayPersonId(event: DetectionEvent): string | null {
   if (event.associationStatus === "associated" && event.personTrackingId)
     return event.personTrackingId;
   return null;
+}
+
+/**
+ * Presentation-safety guard. An uncertain person association can never be
+ * rendered as a critical accusation, even when a malformed upstream payload
+ * claims severity = "critical". The AI service remains responsible for
+ * producing correct severities; the UI only refuses to over-claim.
+ */
+export function displaySeverity(event: DetectionEvent): EventSeverity {
+  if (event.associationStatus === "uncertain" && event.severity === "critical") return "warning";
+  return event.severity;
 }
 
 export function formatSeconds(value: number | null): string {

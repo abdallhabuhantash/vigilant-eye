@@ -16,9 +16,9 @@ export function LiveAlertOverlay({ event, camera }: { event?: DetectionEvent; ca
   if (!event || (event.severity !== "critical" && !uncertain)) return null;
   // Person IDs are only definitive for reliably associated detections.
   const personId = displayPersonId(event);
-  const tone = uncertain
-    ? { accent: "warning", label: "Warning · human review required" }
-    : { accent: "destructive", label: "Critical alert · human review required" };
+  const toneLabel = uncertain
+    ? "Warning · human review required"
+    : "Critical alert · human review required";
   return (
     <div
       className={`pointer-events-none absolute left-1/2 top-20 z-30 w-[min(92%,470px)] -translate-x-1/2 animate-alert-in border border-l-4 bg-background/92 backdrop-blur-md ${uncertain ? "border-warning/70 shadow-[0_0_24px_color-mix(in_oklab,var(--warning)_32%,transparent)]" : "border-destructive/70 shadow-[0_0_24px_color-mix(in_oklab,var(--destructive)_32%,transparent)]"}`}
@@ -33,7 +33,7 @@ export function LiveAlertOverlay({ event, camera }: { event?: DetectionEvent; ca
           <p
             className={`font-mono text-[9px] font-bold uppercase ${uncertain ? "text-warning" : "text-destructive"}`}
           >
-            {tone.label}
+            {toneLabel}
           </p>
           <h3 className="mt-0.5 text-sm font-bold uppercase text-foreground">
             {eventTitle(event)}
