@@ -28,15 +28,17 @@ function MonitoringPage() {
   useRealtimeEvents({ notify: true });
   const opMode = useOperationMode();
   const isDemoMode = (opMode.data ?? "demo") === "demo";
-  // Demo cameras, overlays and sample events exist only in demo mode.
+  // Queries are already scoped to the active operation mode; in-memory demo
+  // fallbacks are only ever added in demo mode.
   const cameras = useMemo(
     () => (isDemoMode ? mergeDemoCameras(camerasQuery.data ?? []) : (camerasQuery.data ?? []).filter((camera) => !camera.isDemo)),
     [camerasQuery.data, isDemoMode],
   );
-  const events = useMemo(
-    () => (!isDemoMode || (eventsQuery.data?.length ?? 0) >= 3 ? eventsQuery.data ?? [] : [...demoEvents, ...(eventsQuery.data ?? [])]),
-    [eventsQuery.data, isDemoMode],
-  );
+  const events = useMemo(() => {
+    const rows = (eventsQuery.data ?? []).filter((event) => event.sourceMode === (isDemoMode ? "demo" : "live"));
+    if (!isDemoMode || rows.length >= 3) return rows;
+    return [...demoEvents, ...rows];
+  }, [eventsQuery.data, isDemoMode]);
   const [selectedId, setSelectedId] = useState(""); const [mode, setMode] = useState<"single" | "wall">("single");
   const [overlays, setOverlays] = useState(true); const [showCameras, setShowCameras] = useState(false); const [showEvents, setShowEvents] = useState(true);
   useEffect(() => { if (!selectedId && cameras[0]) setSelectedId(cameras[0].id); }, [cameras, selectedId]);

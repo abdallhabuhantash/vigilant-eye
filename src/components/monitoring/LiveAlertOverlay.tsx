@@ -1,9 +1,19 @@
 import { AlertTriangle } from "lucide-react";
-import { eventSubtitle, eventTitle, formatPercent, formatSeconds } from "@/lib/event-presentation";
+import {
+  displayPersonId,
+  eventSubtitle,
+  eventTitle,
+  formatPercent,
+  formatSeconds,
+} from "@/lib/event-presentation";
 import type { Camera, DetectionEvent } from "@/types";
 
 export function LiveAlertOverlay({ event, camera }: { event?: DetectionEvent; camera: Camera }) {
-  if (!event || event.severity !== "critical") return null;
+  // Safety guard: an uncertain association must never be presented as a
+  // confirmed critical accusation, even if an upstream payload says so.
+  const uncertain = event?.associationStatus === "uncertain";
+  if (!event || event.severity !== "critical" || uncertain) return null;
+  const personId = displayPersonId(event);
   return (
     <div className="pointer-events-none absolute left-1/2 top-20 z-30 w-[min(92%,470px)] -translate-x-1/2 animate-alert-in border border-destructive/70 border-l-4 bg-background/92 shadow-[0_0_24px_color-mix(in_oklab,var(--destructive)_32%,transparent)] backdrop-blur-md">
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3 p-3">
@@ -29,7 +39,7 @@ export function LiveAlertOverlay({ event, camera }: { event?: DetectionEvent; ca
         <div className="border-r border-destructive/20 p-2">
           <dt className="text-muted-foreground">TRACK / TRIGGER</dt>
           <dd className="mt-0.5 text-foreground">
-            {event.personTrackingId ? `ID ${event.personTrackingId}` : "—"} ·{" "}
+            {personId ? `ID ${personId}` : "—"} ·{" "}
             {formatPercent(event.triggerConfidence ?? event.confidence)}
           </dd>
         </div>
