@@ -9,20 +9,31 @@ import {
 import type { Camera, DetectionEvent } from "@/types";
 
 export function LiveAlertOverlay({ event, camera }: { event?: DetectionEvent; camera: Camera }) {
-  // Safety guard: an uncertain association must never be presented as a
-  // confirmed critical accusation, even if an upstream payload says so.
+  // Frontend safety guard: an uncertain association is never presented as a
+  // confirmed critical accusation, even if an upstream payload claims
+  // severity = critical. It degrades to a warning-level review prompt.
   const uncertain = event?.associationStatus === "uncertain";
-  if (!event || event.severity !== "critical" || uncertain) return null;
+  if (!event || (event.severity !== "critical" && !uncertain)) return null;
+  // Person IDs are only definitive for reliably associated detections.
   const personId = displayPersonId(event);
+  const tone = uncertain
+    ? { accent: "warning", label: "Warning · human review required" }
+    : { accent: "destructive", label: "Critical alert · human review required" };
   return (
-    <div className="pointer-events-none absolute left-1/2 top-20 z-30 w-[min(92%,470px)] -translate-x-1/2 animate-alert-in border border-destructive/70 border-l-4 bg-background/92 shadow-[0_0_24px_color-mix(in_oklab,var(--destructive)_32%,transparent)] backdrop-blur-md">
+    <div
+      className={`pointer-events-none absolute left-1/2 top-20 z-30 w-[min(92%,470px)] -translate-x-1/2 animate-alert-in border border-l-4 bg-background/92 backdrop-blur-md ${uncertain ? "border-warning/70 shadow-[0_0_24px_color-mix(in_oklab,var(--warning)_32%,transparent)]" : "border-destructive/70 shadow-[0_0_24px_color-mix(in_oklab,var(--destructive)_32%,transparent)]"}`}
+    >
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3 p-3">
-        <div className="grid size-9 place-items-center border border-destructive/50 bg-destructive/12 text-destructive">
+        <div
+          className={`grid size-9 place-items-center border ${uncertain ? "border-warning/50 bg-warning/12 text-warning" : "border-destructive/50 bg-destructive/12 text-destructive"}`}
+        >
           <AlertTriangle className="size-5" />
         </div>
         <div className="min-w-0">
-          <p className="font-mono text-[9px] font-bold uppercase text-destructive">
-            Critical alert · human review required
+          <p
+            className={`font-mono text-[9px] font-bold uppercase ${uncertain ? "text-warning" : "text-destructive"}`}
+          >
+            {tone.label}
           </p>
           <h3 className="mt-0.5 text-sm font-bold uppercase text-foreground">
             {eventTitle(event)}
@@ -35,15 +46,17 @@ export function LiveAlertOverlay({ event, camera }: { event?: DetectionEvent; ca
           </span>
         )}
       </div>
-      <dl className="grid grid-cols-3 border-t border-destructive/30 bg-destructive/5 font-mono text-[9px]">
-        <div className="border-r border-destructive/20 p-2">
+      <dl
+        className={`grid grid-cols-3 border-t font-mono text-[9px] ${uncertain ? "border-warning/30 bg-warning/5" : "border-destructive/30 bg-destructive/5"}`}
+      >
+        <div className={`border-r p-2 ${uncertain ? "border-warning/20" : "border-destructive/20"}`}>
           <dt className="text-muted-foreground">TRACK / TRIGGER</dt>
           <dd className="mt-0.5 text-foreground">
             {personId ? `ID ${personId}` : "—"} ·{" "}
             {formatPercent(event.triggerConfidence ?? event.confidence)}
           </dd>
         </div>
-        <div className="border-r border-destructive/20 p-2">
+        <div className={`border-r p-2 ${uncertain ? "border-warning/20" : "border-destructive/20"}`}>
           <dt className="text-muted-foreground">DURATION / ASSOC.</dt>
           <dd className="mt-0.5 text-foreground">
             {formatSeconds(event.detectionDurationSeconds)} ·{" "}
