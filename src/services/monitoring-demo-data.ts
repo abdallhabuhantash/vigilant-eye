@@ -1,4 +1,4 @@
-import type { Camera, DetectionEvent, DetectionOverlay } from "@/types";
+import type { Camera, DetectionEvent, DetectionEvidence, DetectionOverlay } from "@/types";
 
 const now = Date.now();
 
@@ -9,17 +9,59 @@ export const demoCameras: Camera[] = [
   { id: "demo-computer-lab", name: "Computer Lab", location: "Technology Building", host: "demo", channel: 4, status: "offline", aiEnabled: false, recording: false, resolution: "1920×1080", fps: 0, isDemo: true, lastHeartbeatAt: new Date(now - 420_000).toISOString() },
 ];
 
+/** Normalized (0–1) evidence, mirroring the Python AI service payload. */
+const evidenceAssociated: DetectionEvidence[] = [
+  { objectId: "person-03", trackingId: "03", className: "person", confidence: 0.94, bbox: { x: 0.43, y: 0.38, width: 0.19, height: 0.53 }, role: "person", associatedPersonTrackingId: null, associationConfidence: null },
+  { objectId: "phone-17", trackingId: null, className: "cell_phone", confidence: 0.88, bbox: { x: 0.505, y: 0.68, width: 0.055, height: 0.1 }, role: "trigger_object", associatedPersonTrackingId: "03", associationConfidence: 0.91 },
+];
+
+const evidenceUncertain: DetectionEvidence[] = [
+  { objectId: "person-11", trackingId: "11", className: "person", confidence: 0.83, bbox: { x: 0.7, y: 0.42, width: 0.14, height: 0.44 }, role: "person", associatedPersonTrackingId: null, associationConfidence: null },
+  { objectId: "phone-22", trackingId: null, className: "cell_phone", confidence: 0.62, bbox: { x: 0.76, y: 0.63, width: 0.04, height: 0.08 }, role: "trigger_object", associatedPersonTrackingId: "11", associationConfidence: 0.54 },
+];
+
+const evidenceUnassociated: DetectionEvidence[] = [
+  { objectId: "phone-31", trackingId: null, className: "cell_phone", confidence: 0.71, bbox: { x: 0.18, y: 0.72, width: 0.04, height: 0.07 }, role: "trigger_object", associatedPersonTrackingId: null, associationConfidence: null },
+];
+
+/** Converts normalized evidence into percentage-based viewport overlays. */
+export function overlaysFromEvidence(evidence: DetectionEvidence[], alert: boolean): DetectionOverlay[] {
+  return evidence.map((item) => ({
+    objectId: item.objectId,
+    trackingId: item.trackingId,
+    className: item.className === "person" ? "person" : "cell_phone",
+    confidence: item.confidence,
+    x: item.bbox.x * 100,
+    y: item.bbox.y * 100,
+    width: item.bbox.width * 100,
+    height: item.bbox.height * 100,
+    associatedPersonId:
+      item.associatedPersonTrackingId === null
+        ? null
+        : (evidence.find(
+            (candidate) => candidate.trackingId === item.associatedPersonTrackingId,
+          )?.objectId ?? null),
+    associationConfidence: item.associationConfidence,
+    alertState:
+      item.associationConfidence !== null && item.associationConfidence < 0.65
+        ? "uncertain"
+        : alert && item.role === "trigger_object"
+          ? "alert"
+          : item.className === "person" && alert
+            ? "alert"
+            : "normal",
+  }));
+}
+
 export const demoDetections: DetectionOverlay[] = [
-  { objectId: "person-03", trackingId: "03", className: "person", confidence: 0.94, x: 43, y: 38, width: 19, height: 53, associatedPersonId: null, associationConfidence: null, alertState: "alert" },
-  { objectId: "phone-17", trackingId: null, className: "cell_phone", confidence: 0.88, x: 50.5, y: 68, width: 5.5, height: 10, associatedPersonId: "person-03", associationConfidence: 0.91, alertState: "alert" },
-  { objectId: "person-08", trackingId: "08", className: "person", confidence: 0.91, x: 18, y: 49, width: 12, height: 39, associatedPersonId: null, associationConfidence: null, alertState: "normal" },
-  { objectId: "phone-22", trackingId: null, className: "cell_phone", confidence: 0.62, x: 76, y: 63, width: 4, height: 8, associatedPersonId: "person-11", associationConfidence: 0.54, alertState: "uncertain" },
+  ...overlaysFromEvidence(evidenceAssociated, true),
+  ...overlaysFromEvidence(evidenceUncertain, false),
 ];
 
 export const demoEvents: DetectionEvent[] = [
-  { id: "demo-event-critical", type: "suspicious_cheating_activity", severity: "critical", status: "new", cameraId: "demo-exam-front", cameraName: "Exam Hall A — Front", ruleId: "mobile-phone-rule", confidence: 0.88, durationSeconds: 1.8, snapshotUrl: null, detectedAt: new Date(now - 18_000).toISOString(), reviewedBy: null, note: "Person ID 03 · Mobile Phone Detected" },
-  { id: "demo-event-uncertain", type: "possible_cheating_activity", severity: "warning", status: "under_review", cameraId: "demo-exam-rear", cameraName: "Exam Hall A — Rear", ruleId: "mobile-phone-rule", confidence: 0.62, durationSeconds: 0.9, snapshotUrl: null, detectedAt: new Date(now - 165_000).toISOString(), reviewedBy: null, note: "Person ID 11 · Uncertain Phone Association" },
-  { id: "demo-event-rejected", type: "mobile_phone_detected", severity: "info", status: "rejected", cameraId: "demo-exam-b", cameraName: "Exam Hall B", ruleId: "mobile-phone-rule", confidence: 0.71, durationSeconds: 1.1, snapshotUrl: null, detectedAt: new Date(now - 520_000).toISOString(), reviewedBy: "Operator", note: "Person ID 06 · False positive rejected" },
+  { id: "demo-event-critical", type: "suspicious_cheating_activity", severity: "critical", status: "new", cameraId: "demo-exam-front", cameraName: "Exam Hall A — Front", ruleId: "mobile-phone-rule", confidence: 0.88, durationSeconds: 2, snapshotUrl: null, detectedAt: new Date(now - 18_000).toISOString(), reviewedBy: null, note: null, personTrackingId: "03", triggerObjectClass: "cell_phone", triggerConfidence: 0.88, associationStatus: "associated", associationConfidence: 0.91, detectionDurationSeconds: 1.8, detectionFrameCount: 34, evidence: evidenceAssociated, sourceMode: "demo" },
+  { id: "demo-event-uncertain", type: "possible_cheating_activity", severity: "warning", status: "under_review", cameraId: "demo-exam-rear", cameraName: "Exam Hall A — Rear", ruleId: "mobile-phone-rule", confidence: 0.62, durationSeconds: 1, snapshotUrl: null, detectedAt: new Date(now - 165_000).toISOString(), reviewedBy: null, note: null, personTrackingId: "11", triggerObjectClass: "cell_phone", triggerConfidence: 0.62, associationStatus: "uncertain", associationConfidence: 0.54, detectionDurationSeconds: 0.9, detectionFrameCount: 17, evidence: evidenceUncertain, sourceMode: "demo" },
+  { id: "demo-event-rejected", type: "mobile_phone_detected", severity: "info", status: "rejected", cameraId: "demo-exam-b", cameraName: "Exam Hall B", ruleId: "mobile-phone-rule", confidence: 0.71, durationSeconds: 1, snapshotUrl: null, detectedAt: new Date(now - 520_000).toISOString(), reviewedBy: "Operator", note: "Reviewed as a false positive.", personTrackingId: null, triggerObjectClass: "cell_phone", triggerConfidence: 0.71, associationStatus: "unassociated", associationConfidence: null, detectionDurationSeconds: 1.1, detectionFrameCount: 21, evidence: evidenceUnassociated, sourceMode: "demo" },
 ];
 
 export function mergeDemoCameras(cameras: Camera[]): Camera[] {
