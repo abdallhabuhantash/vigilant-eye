@@ -49,14 +49,18 @@ export function LiveAlertOverlay({ event, camera }: { event?: DetectionEvent; ca
       <dl
         className={`grid grid-cols-3 border-t font-mono text-[9px] ${uncertain ? "border-warning/30 bg-warning/5" : "border-destructive/30 bg-destructive/5"}`}
       >
-        <div className={`border-r p-2 ${uncertain ? "border-warning/20" : "border-destructive/20"}`}>
+        <div
+          className={`border-r p-2 ${uncertain ? "border-warning/20" : "border-destructive/20"}`}
+        >
           <dt className="text-muted-foreground">TRACK / TRIGGER</dt>
           <dd className="mt-0.5 text-foreground">
             {personId ? `ID ${personId}` : "—"} ·{" "}
             {formatPercent(event.triggerConfidence ?? event.confidence)}
           </dd>
         </div>
-        <div className={`border-r p-2 ${uncertain ? "border-warning/20" : "border-destructive/20"}`}>
+        <div
+          className={`border-r p-2 ${uncertain ? "border-warning/20" : "border-destructive/20"}`}
+        >
           <dt className="text-muted-foreground">DURATION / ASSOC.</dt>
           <dd className="mt-0.5 text-foreground">
             {formatSeconds(event.detectionDurationSeconds)} ·{" "}
