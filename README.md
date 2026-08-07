@@ -72,7 +72,7 @@ The visual design must closely follow the uploaded reference screenshots.
 
 Design style:
 
-- Dark industrial command-center interface.
+- Generic AI surveillance command-center interface.
 
 - Deep navy and charcoal background.
 

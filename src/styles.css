@@ -62,7 +62,7 @@
 }
 
 :root {
-  /* Dark industrial command-center system. Single (dark) theme by design. */
+  /* Generic AI surveillance command-center system. Single (dark) theme by design. */
   --radius: 0.25rem;
 
   --background: oklch(0.17 0.024 255);
