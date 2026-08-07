@@ -5,6 +5,7 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { AI_HEARTBEAT_STALE_MS, NVR_HEARTBEAT_STALE_MS, isFresh } from "@/lib/health";
+import type { Json, Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import type {
   AiRule,
   AiServiceStatus,
@@ -20,15 +21,25 @@ import type {
   SystemSettings,
 } from "@/types";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// Rows come back from the Data API untyped for these hand-written mappers.
-type Row = any;
+// Row shapes come from the generated backend types; mappers translate them
+// into the UI-facing domain types declared in `@/types`.
+type CameraRow = Tables<"cameras">;
+type EventRow = Tables<"events">;
+type RuleRow = Tables<"ai_rules">;
+type ProfileRow = Tables<"profiles">;
+type ServiceHealthRow = Tables<"service_health">;
+
+/** Narrows a jsonb column to a readable key/value bag. */
+const jsonRecord = (value: Json | null | undefined): Record<string, Json | undefined> =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, Json | undefined>)
+    : {};
 
 const fail = (error: { message: string } | null): void => {
   if (error) throw new Error(error.message);
 };
 
-const toCamera = (row: Row): Camera => ({
+const toCamera = (row: CameraRow): Camera => ({
   id: row.id as string,
   name: row.name as string,
   location: row.location as string,
@@ -43,7 +54,7 @@ const toCamera = (row: Row): Camera => ({
   lastHeartbeatAt: row.last_heartbeat_at as string,
 });
 
-const toEvent = (row: Row): DetectionEvent => ({
+const toEvent = (row: EventRow): DetectionEvent => ({
   id: row.id as string,
   type: row.type as DetectionEvent["type"],
   severity: row.severity as DetectionEvent["severity"],
@@ -59,7 +70,7 @@ const toEvent = (row: Row): DetectionEvent => ({
   note: (row.note as string) ?? null,
 });
 
-const toRule = (row: Row, cameraIds: string[]): AiRule => ({
+const toRule = (row: RuleRow, cameraIds: string[]): AiRule => ({
   id: row.id as string,
   name: row.name as string,
   description: row.description as string,
