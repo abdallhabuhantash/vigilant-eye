@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  type CameraScope,
   camerasService,
   eventsService,
   reportsService,
@@ -7,7 +8,13 @@ import {
   systemService,
   usersService,
 } from "@/services/monitoring-service";
-import type { AiRule, EventStatus, OperationMode, SystemSettings } from "@/types";
+import type {
+  AiRule,
+  CameraConfigInput,
+  EventStatus,
+  OperationMode,
+  SystemSettings,
+} from "@/types";
 
 const LIVE_REFRESH_MS = 15_000;
 const HEARTBEAT_REFRESH_MS = 10_000;
@@ -29,11 +36,11 @@ const useScopedMode = () => {
   return { mode: mode.data ?? "demo", ready: mode.data !== undefined } as const;
 };
 
-export const useCameras = () => {
+export const useCameras = (scope: CameraScope = "active") => {
   const { mode, ready } = useScopedMode();
   return useQuery({
-    queryKey: ["cameras", mode],
-    queryFn: () => camerasService.list(mode),
+    queryKey: ["cameras", mode, scope],
+    queryFn: () => camerasService.list(mode, scope),
     enabled: ready,
     refetchInterval: HEARTBEAT_REFRESH_MS,
   });
