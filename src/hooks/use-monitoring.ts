@@ -106,8 +106,15 @@ export const useNvrStatus = () => {
 export const useSystemSettings = () =>
   useQuery({ queryKey: ["system", "settings"], queryFn: systemService.settings });
 
-export const useReportSummary = (range: "7d" | "30d") =>
-  useQuery({ queryKey: ["reports", range], queryFn: () => reportsService.summary(range) });
+/** Reports are cached per operation mode so demo data never leaks into live. */
+export const useReportSummary = (range: "7d" | "30d") => {
+  const { mode, ready } = useScopedMode();
+  return useQuery({
+    queryKey: ["reports", range, mode],
+    queryFn: () => reportsService.summary(range, mode),
+    enabled: ready,
+  });
+};
 
 export function useReviewEvent() {
   const queryClient = useQueryClient();

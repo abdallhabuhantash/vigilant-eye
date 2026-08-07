@@ -6,7 +6,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { AI_HEARTBEAT_STALE_MS, NVR_HEARTBEAT_STALE_MS, isFresh } from "@/lib/health";
 import { effectiveSeverity } from "@/lib/event-presentation";
-import { addDays, startOfZonedDay, zonedDayKey, zonedWeekdayLabel } from "@/lib/time-zone";
+import { addDays, startOfZonedDay, zonedWeekdayLabel } from "@/lib/time-zone";
 import type { Json, Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import type {
   AiRule,
