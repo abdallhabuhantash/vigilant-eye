@@ -209,22 +209,26 @@ class Orchestrator:
         assert self.detector is not None
         detections = self.detector.detect(frame, camera.id)
         rules = self._rules_for(camera)
-        rule = rules[0] if rules else None
 
-        associations = {}
-        if rule is not None:
+        # Annotation uses the most permissive thresholds across all active rules
+        # so the operator sees every detection the engine will evaluate.
+        associations: dict = {}
+        if rules:
+            min_person_conf = min(r.person_confidence_threshold for r in rules)
+            min_phone_conf = min(r.confidence_threshold for r in rules)
+            min_assoc_conf = min(r.association_confidence_threshold for r in rules)
             persons = tuple(
                 person
                 for person in detections.persons
-                if person.confidence >= rule.person_confidence_threshold and person.tracking_id
+                if person.confidence >= min_person_conf and person.tracking_id
             )
             for index, phone in enumerate(detections.phones):
-                if phone.confidence < rule.confidence_threshold:
+                if phone.confidence < min_phone_conf:
                     continue
                 associations[phone.tracking_id or f"idx{index}"] = associate(
                     phone,
                     persons,
-                    association_threshold=rule.association_confidence_threshold,
+                    association_threshold=min_assoc_conf,
                     margin=self.settings.association_margin,
                 )
 
@@ -239,21 +243,26 @@ class Orchestrator:
         if jpeg:
             self.stream_hub.publish(camera.id, jpeg)
 
-        if rule is None:
+        if not rules:
             return
 
-        drafts = self.engine.process_frame(
-            camera=camera,
-            rule=rule,
-            detections=detections,
-            now=time.monotonic(),
-            source_mode=self.system.operation_mode,
-            detected_at=datetime.now(timezone.utc),
-        )
-        for draft in drafts:
-            self.publisher.publish(
-                draft.event, frame=annotated, save_snapshot=draft.save_snapshot
+        # One detection pass is evaluated by every compatible rule assigned to
+        # this camera. No inference duplication, no silently ignored rules.
+        now_mono = time.monotonic()
+        detected_at = datetime.now(timezone.utc)
+        for rule in rules:
+            drafts = self.engine.process_frame(
+                camera=camera,
+                rule=rule,
+                detections=detections,
+                now=now_mono,
+                source_mode=self.system.operation_mode,
+                detected_at=detected_at,
             )
+            for draft in drafts:
+                self.publisher.publish(
+                    draft.event, frame=annotated, save_snapshot=draft.save_snapshot
+                )
 
     # --- control loop -----------------------------------------------------
     def _health_payload(self) -> dict:

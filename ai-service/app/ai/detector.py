@@ -1,7 +1,19 @@
-"""Ultralytics YOLO wrapper with built-in tracking.
+"""Ultralytics YOLO wrapper with per-camera tracker isolation.
 
-Class IDs are discovered from `model.names`, never hard-coded, so switching to
-another YOLO checkpoint requires no code change.
+Class IDs are discovered from ``model.names``, never hard-coded, so switching
+to another YOLO checkpoint requires no code change.
+
+Tracker isolation
+-----------------
+Ultralytics ``model.track(persist=True)`` keeps an *internal* tracker state
+inside the model object. If one shared model is called with ``persist=True``
+for camera A then camera B, ByteTrack's track IDs can bleed across cameras.
+
+To guarantee that Camera A's tracking history can never influence Camera B,
+each camera gets its own lightweight tracker object. Before inference we swap
+the per-camera tracker into the shared model, run ``track(persist=False)``, and
+restore the previous tracker. This keeps one shared YOLO detector (no model
+copy per camera) while keeping tracker state strictly isolated.
 """
 
 from __future__ import annotations
@@ -25,7 +37,7 @@ LABEL_MAP = {
 
 
 def resolve_device(configured: str) -> str:
-    """`auto` picks CUDA when available, otherwise CPU. Never hard-coded GPU."""
+    """``auto`` picks CUDA when available, otherwise CPU. Never hard-coded GPU."""
     if configured and configured.lower() != "auto":
         return configured
     try:
@@ -51,9 +63,9 @@ def wanted_class_ids(names: dict[int, str]) -> dict[int, str]:
 class YoloDetector:
     """Thread-safe front-end for one shared Ultralytics model.
 
-    Ultralytics tracker state is not thread-safe, so inference is serialised
-    behind a lock; per-camera tracker state is kept isolated by using a
-    separate persistent tracker per camera id.
+    Inference is serialised behind a lock. Per-camera tracker state is kept
+    isolated by swapping a dedicated tracker object into the model for each
+    camera's ``track()`` call and restoring it afterwards.
     """
 
     def __init__(self, model_name: str, device: str, imgsz: int, tracker: str) -> None:
@@ -66,7 +78,7 @@ class YoloDetector:
         self._lock = threading.Lock()
         self._model = YOLO(model_name)
         self._classes = wanted_class_ids(dict(self._model.names))
-        self._known_cameras: set[str] = set()
+        self._trackers: dict[str, object] = {}
         logger.info(
             "YOLO model %s ready on %s (classes: %s)",
             model_name,
@@ -79,24 +91,38 @@ class YoloDetector:
         return sorted(self._classes)
 
     def reset_camera(self, camera_id: str) -> None:
-        self._known_cameras.discard(camera_id)
+        """Drops all tracker state for one camera (e.g. on config change)."""
+        self._trackers.pop(camera_id, None)
+
+    def _tracker_for(self, camera_id: str) -> object:
+        """Returns a dedicated tracker object for one camera, created on demand."""
+        if camera_id not in self._trackers:
+            from ultralytics.track import bot_sort  # imported lazily
+
+            cfg = self.tracker if self.tracker.endswith(".yaml") else f"{self.tracker}.yaml"
+            self._trackers[camera_id] = bot_sort.BotSortArgs(cfg)
+        return self._trackers[camera_id]
 
     def detect(self, frame, camera_id: str, min_confidence: float = 0.20) -> FrameDetections:
         """Runs tracked inference on one BGR frame and returns typed detections."""
         height, width = frame.shape[:2]
         with self._lock:
-            persist = camera_id in self._known_cameras
-            self._known_cameras.add(camera_id)
-            results = self._model.track(
-                source=frame,
-                persist=persist,
-                tracker=self.tracker,
-                imgsz=self.imgsz,
-                device=self.device,
-                classes=self.class_ids,
-                conf=min_confidence,
-                verbose=False,
-            )
+            tracker = self._tracker_for(camera_id)
+            prev_tracker = getattr(self._model, "tracker", None)
+            self._model.tracker = tracker  # type: ignore[attr-defined]
+            try:
+                results = self._model.track(
+                    source=frame,
+                    persist=False,
+                    tracker=self.tracker,
+                    imgsz=self.imgsz,
+                    device=self.device,
+                    classes=self.class_ids,
+                    conf=min_confidence,
+                    verbose=False,
+                )
+            finally:
+                self._model.tracker = prev_tracker  # type: ignore[attr-defined]
 
         persons: list[Detection] = []
         phones: list[Detection] = []
