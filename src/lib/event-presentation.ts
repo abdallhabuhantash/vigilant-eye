@@ -65,6 +65,12 @@ export function displaySeverity(event: DetectionEvent): EventSeverity {
   return event.severity;
 }
 
+/**
+ * Canonical severity for both presentation and statistics. Counters must never
+ * report an uncertain association as critical.
+ */
+export const effectiveSeverity = displaySeverity;
+
 export function formatSeconds(value: number | null): string {
   if (value === null) return "—";
   return `${Number(value)

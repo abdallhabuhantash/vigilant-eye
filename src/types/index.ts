@@ -83,6 +83,8 @@ export interface DetectionEvent {
   snapshotUrl: string | null;
   detectedAt: string;
   reviewedBy: string | null;
+  /** When a human completed the review, if ever. */
+  reviewedAt: string | null;
   /** Human reviewer note only — never a transport for AI evidence. */
   note: string | null;
   /** Temporary AI tracking identifier, not a real-world identity. */
@@ -194,10 +196,19 @@ export interface ReportPoint {
 
 export interface ReportSummary {
   range: "7d" | "30d";
+  mode: OperationMode;
+  totalEvents: number;
   timeline: ReportPoint[];
   byCamera: { cameraName: string; events: number }[];
+  bySeverity: { critical: number; warning: number; info: number };
+  byType: { type: string; events: number }[];
+  confirmed: number;
+  rejected: number;
+  pending: number;
+  averageConfidence: number;
   confirmationRate: number;
-  averageReviewMinutes: number;
+  /** Null when no completed reviews exist in range. */
+  averageReviewMinutes: number | null;
 }
 
 export interface SystemSettings {
