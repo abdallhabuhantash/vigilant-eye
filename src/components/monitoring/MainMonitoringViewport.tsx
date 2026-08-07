@@ -3,6 +3,7 @@ import { useRef } from "react";
 import examHallSurveillance from "@/assets/exam-hall-surveillance.jpg";
 import { LiveStreamPlayer } from "@/components/common/LiveStreamPlayer";
 import { Button } from "@/components/ui/button";
+import { displaySeverity } from "@/lib/event-presentation";
 import { DetectionOverlayLayer } from "./DetectionOverlayLayer";
 import { LiveAlertOverlay } from "./LiveAlertOverlay";
 import { cn } from "@/lib/utils";
