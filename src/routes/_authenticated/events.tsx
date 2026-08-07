@@ -5,6 +5,7 @@ import {
   ConfidenceMeter,
   SeverityBadge,
   StatusBadge,
+  AssociationBadge,
   eventTypeLabel,
 } from "@/components/common/EventBadges";
 import { Panel } from "@/components/common/Panel";
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { useEvents, useEventsSummary, useReviewEvent } from "@/hooks/use-monitoring";
 import { useRealtimeEvents } from "@/hooks/use-realtime-events";
+import { displayPersonId, formatSeconds } from "@/lib/event-presentation";
 import { formatTimestamp } from "@/lib/format";
 import type { EventSeverity, EventStatus } from "@/types";
 
@@ -127,7 +129,9 @@ function EventsPage() {
                 <th className="label-tech px-3 py-2">Detected</th>
                 <th className="label-tech px-3 py-2">Event</th>
                 <th className="label-tech px-3 py-2">Camera</th>
-                <th className="label-tech px-3 py-2">Confidence</th>
+                <th className="label-tech px-3 py-2">Track</th>
+                <th className="label-tech px-3 py-2">Trigger conf.</th>
+                <th className="label-tech px-3 py-2">Association</th>
                 <th className="label-tech px-3 py-2">Duration</th>
                 <th className="label-tech px-3 py-2">Severity</th>
                 <th className="label-tech px-3 py-2">Status</th>
@@ -145,11 +149,17 @@ function EventsPage() {
                   </td>
                   <td className="px-3 py-2 text-foreground">{eventTypeLabel(event.type)}</td>
                   <td className="px-3 py-2 text-muted-foreground">{event.cameraName}</td>
+                  <td className="px-3 py-2 font-mono text-[11px] text-muted-foreground">
+                    {displayPersonId(event) ?? "—"}
+                  </td>
                   <td className="px-3 py-2">
-                    <ConfidenceMeter value={event.confidence} />
+                    <ConfidenceMeter value={event.triggerConfidence ?? event.confidence} />
+                  </td>
+                  <td className="px-3 py-2">
+                    <AssociationBadge status={event.associationStatus} />
                   </td>
                   <td className="px-3 py-2 font-mono text-[11px] tabular-nums">
-                    {event.durationSeconds}s
+                    {formatSeconds(event.detectionDurationSeconds)}
                   </td>
                   <td className="px-3 py-2">
                     <SeverityBadge severity={event.severity} />
