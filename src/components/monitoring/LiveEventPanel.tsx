@@ -42,7 +42,13 @@ function EvidenceThumbnail({ event, enabled }: { event: DetectionEvent; enabled:
   );
 }
 
-function LiveEventCard({ event, enableSnapshot }: { event: DetectionEvent; enableSnapshot: boolean }) {
+function LiveEventCard({
+  event,
+  enableSnapshot,
+}: {
+  event: DetectionEvent;
+  enableSnapshot: boolean;
+}) {
   // Structured fields only — never parsed out of the reviewer note.
   const person = displayPersonId(event);
   const subtitle = eventSubtitle(event);

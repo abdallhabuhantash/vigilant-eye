@@ -10,10 +10,7 @@ import {
 } from "@/components/common/EventBadges";
 import { Panel } from "@/components/common/Panel";
 import { EventDetailsDialog } from "@/components/events/EventDetailsDialog";
-import {
-  ReviewConfirmDialog,
-  type ReviewDecision,
-} from "@/components/events/ReviewConfirmDialog";
+import { ReviewConfirmDialog, type ReviewDecision } from "@/components/events/ReviewConfirmDialog";
 import { StatTile } from "@/components/common/StatTile";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { TopBar } from "@/components/layout/TopBar";
@@ -56,9 +53,10 @@ function EventsPage() {
   const [status, setStatus] = useState<EventStatus | "all">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Confirm / Reject always pass through an explicit confirmation step.
-  const [pendingDecision, setPendingDecision] = useState<
-    { id: string; decision: ReviewDecision } | null
-  >(null);
+  const [pendingDecision, setPendingDecision] = useState<{
+    id: string;
+    decision: ReviewDecision;
+  } | null>(null);
   const filtered = useMemo(
     () =>
       (events.data ?? []).filter((event) => {
@@ -194,9 +192,7 @@ function EventsPage() {
                         variant="outline"
                         className="h-7 gap-1 px-2 text-[11px] text-success"
                         disabled={event.status === "confirmed" || review.isPending}
-                        onClick={() =>
-                          setPendingDecision({ id: event.id, decision: "confirmed" })
-                        }
+                        onClick={() => setPendingDecision({ id: event.id, decision: "confirmed" })}
                       >
                         <Check className="size-3" /> Confirm
                       </Button>

@@ -15,11 +15,7 @@ import {
   useSystemSettings,
   useUpdateSettings,
 } from "@/hooks/use-monitoring";
-import {
-  aiHealthState,
-  componentHealthLabel,
-  nvrHealthState,
-} from "@/lib/health";
+import { aiHealthState, componentHealthLabel, nvrHealthState } from "@/lib/health";
 import { formatRelative } from "@/lib/format";
 import { requireAdministrator } from "@/lib/require-admin";
 
@@ -272,7 +268,12 @@ function HealthSection() {
       subtitle="Reported by service heartbeats. Values appear only when actually reported."
       bodyClassName="grid gap-3 p-3 sm:grid-cols-2 lg:col-span-2"
       actions={
-        <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-[11px]" onClick={refresh}>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 gap-1 px-2 text-[11px]"
+          onClick={refresh}
+        >
           <RefreshCw className="size-3" /> Refresh status
         </Button>
       }

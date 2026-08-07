@@ -6,10 +6,7 @@ import {
   StatusBadge,
 } from "@/components/common/EventBadges";
 import { DetectionOverlayLayer } from "@/components/monitoring/DetectionOverlayLayer";
-import {
-  ReviewConfirmDialog,
-  type ReviewDecision,
-} from "@/components/events/ReviewConfirmDialog";
+import { ReviewConfirmDialog, type ReviewDecision } from "@/components/events/ReviewConfirmDialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
