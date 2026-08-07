@@ -4,6 +4,7 @@ import { AssociationBadge, StatusBadge } from "@/components/common/EventBadges";
 import { Button } from "@/components/ui/button";
 import {
   displayPersonId,
+  displaySeverity,
   eventSubtitle,
   eventTitle,
   formatSeconds,
@@ -16,12 +17,13 @@ function LiveEventCard({ event }: { event: DetectionEvent }) {
   // Structured fields only — never parsed out of the reviewer note.
   const person = displayPersonId(event);
   const subtitle = eventSubtitle(event);
+  const severity = displaySeverity(event);
   return (
     <article
       className={cn(
         "grid grid-cols-[64px_minmax(0,1fr)] gap-2 border-b border-border/70 p-3 transition-colors hover:bg-accent/30",
-        event.severity === "critical" && "border-l-2 border-l-destructive bg-destructive/5",
-        event.severity === "warning" && "border-l-2 border-l-warning",
+        severity === "critical" && "border-l-2 border-l-destructive bg-destructive/5",
+        severity === "warning" && "border-l-2 border-l-warning",
       )}
     >
       <div className="relative grid aspect-[4/3] place-items-center overflow-hidden border border-border bg-background hud-grid">
@@ -37,14 +39,14 @@ function LiveEventCard({ event }: { event: DetectionEvent }) {
           <span
             className={cn(
               "font-mono text-[8px] font-bold uppercase",
-              event.severity === "critical"
+              severity === "critical"
                 ? "text-destructive"
-                : event.severity === "warning"
+                : severity === "warning"
                   ? "text-warning"
                   : "text-info",
             )}
           >
-            {event.severity}
+            {severity}
           </span>
           <span className="font-mono text-[8px] text-muted-foreground">
             {formatRelative(event.detectedAt)}
