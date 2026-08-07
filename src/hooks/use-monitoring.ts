@@ -20,36 +20,64 @@ export const useOperationMode = () =>
     refetchInterval: LIVE_REFRESH_MS,
   });
 
-export const useCameras = () =>
-  useQuery({
-    queryKey: ["cameras"],
-    queryFn: camerasService.list,
+/**
+ * Demo and live records never mix: every monitoring read is scoped to the
+ * active operation mode, including the summary counters.
+ */
+const useScopedMode = () => {
+  const mode = useOperationMode();
+  return { mode: mode.data ?? "demo", ready: mode.data !== undefined } as const;
+};
+
+export const useCameras = () => {
+  const { mode, ready } = useScopedMode();
+  return useQuery({
+    queryKey: ["cameras", mode],
+    queryFn: () => camerasService.list(mode),
+    enabled: ready,
     refetchInterval: HEARTBEAT_REFRESH_MS,
   });
+};
 
-export const useCameraSummary = () =>
-  useQuery({
-    queryKey: ["cameras", "summary"],
-    queryFn: camerasService.summary,
+export const useCameraSummary = () => {
+  const { mode, ready } = useScopedMode();
+  return useQuery({
+    queryKey: ["cameras", "summary", mode],
+    queryFn: () => camerasService.summary(mode),
+    enabled: ready,
     refetchInterval: LIVE_REFRESH_MS,
   });
+};
 
-export const useEvents = () =>
-  useQuery({ queryKey: ["events"], queryFn: eventsService.list, refetchInterval: LIVE_REFRESH_MS });
-
-export const useRecentEvents = (limit = 5) =>
-  useQuery({
-    queryKey: ["events", "recent", limit],
-    queryFn: () => eventsService.recent(limit),
+export const useEvents = () => {
+  const { mode, ready } = useScopedMode();
+  return useQuery({
+    queryKey: ["events", mode],
+    queryFn: () => eventsService.list(mode),
+    enabled: ready,
     refetchInterval: LIVE_REFRESH_MS,
   });
+};
 
-export const useEventsSummary = () =>
-  useQuery({
-    queryKey: ["events", "summary"],
-    queryFn: eventsService.summary,
+export const useRecentEvents = (limit = 5) => {
+  const { mode, ready } = useScopedMode();
+  return useQuery({
+    queryKey: ["events", "recent", limit, mode],
+    queryFn: () => eventsService.recent(limit, mode),
+    enabled: ready,
     refetchInterval: LIVE_REFRESH_MS,
   });
+};
+
+export const useEventsSummary = () => {
+  const { mode, ready } = useScopedMode();
+  return useQuery({
+    queryKey: ["events", "summary", mode],
+    queryFn: () => eventsService.summary(mode),
+    enabled: ready,
+    refetchInterval: LIVE_REFRESH_MS,
+  });
+};
 
 export const useAiRules = () => useQuery({ queryKey: ["ai-rules"], queryFn: rulesService.list });
 

@@ -3,6 +3,7 @@ import { useRef } from "react";
 import examHallSurveillance from "@/assets/exam-hall-surveillance.jpg";
 import { LiveStreamPlayer } from "@/components/common/LiveStreamPlayer";
 import { Button } from "@/components/ui/button";
+import { displaySeverity } from "@/lib/event-presentation";
 import { DetectionOverlayLayer } from "./DetectionOverlayLayer";
 import { LiveAlertOverlay } from "./LiveAlertOverlay";
 import { cn } from "@/lib/utils";
@@ -38,7 +39,9 @@ export function MainMonitoringViewport({
       ref={frameRef}
       className={cn(
         "relative min-h-0 flex-1 overflow-hidden border border-primary/35 bg-background",
-        event?.severity === "critical" && "animate-alert-frame border-destructive/70",
+        event &&
+          displaySeverity(event) === "critical" &&
+          "animate-alert-frame border-destructive/70",
       )}
     >
       <div className="absolute inset-0">

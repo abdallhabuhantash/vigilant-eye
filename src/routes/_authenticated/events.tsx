@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { useEvents, useEventsSummary, useReviewEvent } from "@/hooks/use-monitoring";
 import { useRealtimeEvents } from "@/hooks/use-realtime-events";
-import { displayPersonId, formatSeconds } from "@/lib/event-presentation";
+import { displayPersonId, displaySeverity, formatSeconds } from "@/lib/event-presentation";
 import { formatTimestamp } from "@/lib/format";
 import type { EventSeverity, EventStatus } from "@/types";
 
@@ -57,7 +57,7 @@ function EventsPage() {
           `${event.cameraName} ${eventTypeLabel(event.type)} ${event.id}`
             .toLowerCase()
             .includes(query.toLowerCase());
-        const matchesSeverity = severity === "all" || event.severity === severity;
+        const matchesSeverity = severity === "all" || displaySeverity(event) === severity;
         const matchesStatus = status === "all" || event.status === status;
         return matchesQuery && matchesSeverity && matchesStatus;
       }),
@@ -166,7 +166,7 @@ function EventsPage() {
                     {formatSeconds(event.detectionDurationSeconds)}
                   </td>
                   <td className="px-3 py-2">
-                    <SeverityBadge severity={event.severity} />
+                    <SeverityBadge severity={displaySeverity(event)} />
                   </td>
                   <td className="px-3 py-2">
                     <StatusBadge status={event.status} />

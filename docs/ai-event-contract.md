@@ -58,3 +58,23 @@ so overlays scale with any viewport size. `role` is `person`,
 `min_duration_seconds` (numeric), `min_matching_frames`, `cooldown_seconds`,
 `require_person_association`, `save_snapshot`, `sound_notification`.
 Camera scope comes from `ai_rule_cameras`.
+
+## Service health heartbeats (`service_health`)
+
+Rows for `ai` and `nvr` seeded during the prototype are demonstration
+placeholders and are flagged `is_demo = true`. A real Python AI service or NVR
+heartbeat writer MUST upsert its row with `is_demo = false` explicitly:
+
+```json
+{ "service": "ai", "online": true, "is_demo": false, "payload": { "...": "..." } }
+```
+
+Rows left with `is_demo = true` are never treated as live hardware and are
+hidden while the system runs in Live mode.
+
+## Event source mode
+
+Every event written by the real service MUST set `source_mode = 'live'`.
+Only prototype/demonstration rows use `source_mode = 'demo'`; the UI queries
+events strictly by the active operation mode, so a mislabelled row is invisible
+in the other mode.
